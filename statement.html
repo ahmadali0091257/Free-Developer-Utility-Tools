@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aezoon — Quick Financial Statement</title>
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+<style>
+:root {
+  --bg: #0f172a; --surface: #1e293b; --surface2: #334155; --surface3: #475569; --border: #334155;
+  --text: #f8fafc; --muted: #94a3b8; --primary: #6366f1; --primary-hover: #4f46e5;
+  --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+  --radius: 12px; --radius-sm: 6px; --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+[data-theme="light"] {
+  --bg: #f8fafc; --surface: #ffffff; --surface2: #f1f5f9; --surface3: #e2e8f0; --border: #e2e8f0;
+  --text: #0f172a; --muted: #64748b; --primary: #4f46e5; --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+* { margin:0; padding:0; box-sizing:border-box; transition: background-color 0.3s, border-color 0.3s; }
+body { font-family: system-ui, sans-serif; background:var(--bg); color:var(--text); min-height:100vh; padding: 2rem; }
+.container { max-width: 1100px; margin: 0 auto; }
+
+/* Header & Filters */
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
+.logo { font-size: 1.5rem; font-weight: 700; color: var(--primary); text-decoration: none; }
+.filters { display: flex; align-items: center; gap: 0.8rem; background: var(--surface); padding: 0.6rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border); }
+.filters label { font-size: 0.8rem; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+.inp { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 0.4rem 0.6rem; color: var(--text); outline: none; font-family: inherit; font-size: 0.9rem; }
+
+/* Buttons */
+.btn-back { display: inline-flex; align-items: center; justify-content: center; padding: 0.4rem 0.8rem; background: var(--surface3); color: var(--text); text-decoration: none; border-radius: 5px; font-size: 0.85rem; font-weight: 600; border: 1px solid var(--border); transition: 0.2s; }
+.btn-back:hover { background: var(--border); border-color: var(--muted); }
+
+.range-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.preset-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 0.4rem 0.8rem; border-radius: 4px; font-size: 0.8rem; cursor: pointer; font-weight: 500; transition: 0.2s; }
+.preset-btn:hover { border-color: var(--primary); color: var(--primary); }
+.preset-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+/* Grid Layout */
+.report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+.report-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; box-shadow: var(--shadow); display: flex; flex-direction: column; }
+.report-card h2 { font-size: 1.2rem; margin-bottom: 1.2rem; display: flex; align-items: center; gap: 0.6rem; }
+
+/* List Styles */
+.list-container { flex: 1; display: flex; flex-direction: column; gap: 0.8rem; max-height: 450px; overflow-y: auto; padding-right: 0.4rem; }
+.list-container::-webkit-scrollbar { width: 5px; }
+.list-container::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 10px; }
+.list-container::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+.list-item { display: flex; justify-content: space-between; align-items: center; padding: 0.8rem; background: var(--surface2); border-radius: var(--radius-sm); border: 1px solid var(--border); }
+.item-info { display: flex; flex-direction: column; gap: 0.2rem; }
+.item-title { font-weight: 600; font-size: 0.95rem; }
+.item-meta { font-size: 0.8rem; color: var(--muted); }
+.item-amount { font-weight: 700; font-size: 1rem; }
+
+/* Summary Bar */
+.summary-bar { background: var(--surface); border: 2px solid var(--primary); border-radius: var(--radius); padding: 1.5rem; display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; gap: 1rem; box-shadow: var(--shadow); }
+.summary-stat { display: flex; flex-direction: column; gap: 0.4rem; }
+.stat-label { font-size: 0.85rem; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+.stat-val { font-size: 1.6rem; font-weight: 800; }
+
+.text-success { color: var(--success); }
+.text-danger { color: var(--danger); }
+.text-primary { color: var(--primary); }
+
+.empty { text-align: center; padding: 2rem; color: var(--muted); font-size: 0.9rem; border: 1px dashed var(--border); border-radius: var(--radius-sm); }
+
+@media (max-width: 800px) {
+  .header { flex-direction: column; align-items: stretch; text-align: center; }
+  .range-presets { justify-content: center; margin-top: 0.5rem; }
+  .filters { flex-direction: column; width: 100%; }
+  .report-grid { grid-template-columns: 1fr; }
+  .summary-bar { grid-template-columns: 1fr; gap: 1.5rem; }
+  .summary-stat { border: none !important; }
+}
+</style>
+</head>
+<body data-theme="dark">
+
+<div class="container">
+  <div class="header">
+    <div style="display:flex; align-items:center; gap:1rem;">
+      <a href="index.html" class="btn-back">← Back</a>
+      <a href="index.html" class="logo">Aezoon Statement</a>
+    </div>
+    <div class="range-presets">
+      <button class="preset-btn" onclick="setPreset('today')">Today</button>
+      <button class="preset-btn" onclick="setPreset('7d')">Last 7 Days</button>
+      <button class="preset-btn" onclick="setPreset('30d')">Last 30 Days</button>
+      <button class="preset-btn" onclick="setPreset('month')">This Month</button>
+    </div>
+    <div class="filters">
+      <label>From</label>
+      <input type="date" id="dateFrom" class="inp" onchange="generateStatement()">
+      <label>To</label>
+      <input type="date" id="dateTo" class="inp" onchange="generateStatement()">
+      <button class="inp" style="cursor:pointer; background:var(--primary); color:white; border:none; padding:0.4rem 1rem;" onclick="resetDates()">Clear</button>
+    </div>
+  </div>
+
+  <div class="report-grid">
+    <!-- LEFT SIDE: ORDERS / REVENUE -->
+    <div class="report-card">
+      <h2 class="text-success">🛒 Completed Orders</h2>
+      <div id="ordersList" class="list-container"></div>
+    </div>
+
+    <!-- RIGHT SIDE: EXPENSES -->
+    <div class="report-card">
+      <h2 class="text-danger">💸 Shop Expenses</h2>
+      <div id="expensesList" class="list-container"></div>
+    </div>
+  </div>
+
+  <!-- BOTTOM SUMMARY -->
+  <div class="summary-bar">
+    <div class="summary-stat">
+      <span class="stat-label">Total Gross Profit</span>
+      <span id="sumGross" class="stat-val text-success">AED 0</span>
+    </div>
+    <div class="summary-stat" style="border-left: 1px solid var(--border); border-right: 1px solid var(--border);">
+      <span class="stat-label">Total Expenses</span>
+      <span id="sumExp" class="stat-val text-danger">AED 0</span>
+    </div>
+    <div class="summary-stat">
+      <span class="stat-label">Net Profit / Loss</span>
+      <span id="sumNet" class="stat-val text-primary">AED 0</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyC_asx16rLu7LmC3d-jRVBESrQvfrceuVo",
+  authDomain: "aezoon-app.firebaseapp.com",
+  projectId: "aezoon-app",
+  storageBucket: "aezoon-app.firebasestorage.app",
+  messagingSenderId: "900605885255",
+  appId: "1:900605885255:web:ecaddb61a88ad344c1ea62",
+  measurementId: "G-BEK3YGHVVH"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// Sync Local Theme
+document.body.setAttribute('data-theme', localStorage.getItem('aezoon_theme') || 'dark');
+
+// Real-time Data Store
+let ORDERS = [], EXPENSES = [];
+
+function startRealTimeSync() {
+  db.collection("orders").onSnapshot(snap => {
+    ORDERS = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    generateStatement();
+  });
+  db.collection("expenses").onSnapshot(snap => {
+    EXPENSES = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    generateStatement();
+  });
+}
+
+function generateStatement() {
+  const from = document.getElementById('dateFrom').value;
+  const to = document.getElementById('dateTo').value;
+
+  // Filter Data
+  const orders = ORDERS.filter(o => 
+    o.status === 'delivered' && (!from || o.date >= from) && (!to || o.date <= to)
+  );
+  const expensesList = EXPENSES.filter(e => 
+    e.type === 'expense' && (!from || e.date >= from) && (!to || e.date <= to)
+  );
+  const incomeList = EXPENSES.filter(e => 
+    e.type === 'profit' && (!from || e.date >= from) && (!to || e.date <= to)
+  );
+
+  // Format number
+  const fmt = (n) => (n||0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+  // Totals
+  const totalGross = orders.reduce((s, o) => s + ((o.profit_per||0) * (o.qty||1)), 0) + incomeList.reduce((s,e) => s + e.amount, 0);
+  const totalExp = expensesList.reduce((s, e) => s + (e.amount || 0), 0);
+  const totalNet = totalGross - totalExp;
+
+  // Render Orders
+  const oList = document.getElementById('ordersList');
+  oList.innerHTML = orders.length ? orders.map(o => `
+    <div class="list-item">
+      <div class="item-info">
+        <span class="item-title">${o.customer_name}</span>
+        <span class="item-meta">${o.product} (x${o.qty}) · ${o.date}</span>
+      </div>
+      <div class="item-amount text-success">AED ${fmt((o.profit_per||0)*(o.qty||1))}</div>
+    </div>
+  `).join('') : '<div class="empty">No completed orders in this range.</div>';
+
+  // Render Expenses
+  const eList = document.getElementById('expensesList');
+  eList.innerHTML = expensesList.length ? expensesList.map(e => `
+    <div class="list-item">
+      <div class="item-info">
+        <span class="item-title">${e.title}</span>
+        <span class="item-meta">${e.date} ${e.notes ? ' · '+e.notes : ''}</span>
+      </div>
+      <div class="item-amount text-danger">AED ${fmt(e.amount)}</div>
+    </div>
+  `).join('') : '<div class="empty">No expenses in this range.</div>';
+
+  // Update Summary
+  document.getElementById('sumGross').textContent = `AED ${fmt(totalGross)}`;
+  document.getElementById('sumExp').textContent = `AED ${fmt(totalExp)}`;
+  document.getElementById('sumNet').textContent = `AED ${fmt(totalNet)}`;
+  document.getElementById('sumNet').className = `stat-val ${totalNet >= 0 ? 'text-success' : 'text-danger'}`;
+}
+
+function setPreset(p) {
+  const t = new Date(); let f = new Date();
+  if(p==='today') {}
+  else if(p==='7d') f.setDate(t.getDate()-7);
+  else if(p==='30d') f.setDate(t.getDate()-30);
+  else if(p==='month') f.setDate(1);
+  
+  document.getElementById('dateFrom').value = f.toISOString().split('T')[0];
+  document.getElementById('dateTo').value = t.toISOString().split('T')[0];
+  generateStatement();
+}
+
+function resetDates() {
+  document.getElementById('dateFrom').value = '';
+  document.getElementById('dateTo').value = '';
+  generateStatement();
+}
+
+// Initial Run
+startRealTimeSync();
+</script>
+</body>
+</html>

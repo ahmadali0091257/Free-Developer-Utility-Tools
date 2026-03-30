@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aezoon — AI Product Editor</title>
+<!-- Firebase Compat SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+<style>
+/* ── THEME VARIABLES (Same as Main) ── */
+:root {
+  --bg: #0f172a; --surface: #1e293b; --surface2: #334155; --surface3: #475569; --border: #334155;
+  --text: #f8fafc; --muted: #94a3b8; --primary: #6366f1; --primary-hover: #4f46e5;
+  --primary-light: rgba(99, 102, 241, 0.15); --success: #10b981; --warning: #f59e0b;
+  --radius: 12px; --radius-sm: 6px; --shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+}
+[data-theme="light"] {
+  --bg: #f8fafc; --surface: #ffffff; --surface2: #f1f5f9; --surface3: #e2e8f0; --border: #e2e8f0;
+  --text: #0f172a; --muted: #64748b; --primary: #4f46e5;
+}
+* { margin:0; padding:0; box-sizing:border-box; transition: background-color 0.3s, border-color 0.3s; }
+body { font-family: system-ui, sans-serif; background:var(--bg); color:var(--text); min-height:100vh; font-size: 14px; }
+h1, h2, h3 { font-weight: 600; }
+
+/* ── SIDEBAR ── */
+.sidebar { width:240px; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; padding:1.2rem 1rem; gap:0.4rem; position:fixed; top:0; left:0; height:100vh; }
+.sidebar-logo { font-size:1.5rem; font-weight:700; color:var(--primary); padding:0.5rem 1rem 1.5rem; }
+.nav-item { display:flex; align-items:center; gap:0.7rem; padding:0.7rem 1rem; border-radius:var(--radius-sm); color:var(--muted); text-decoration: none; font-weight:500; }
+.nav-item:hover { background:var(--surface2); color:var(--text); }
+.nav-item.active { background:var(--primary-light); color:var(--primary); font-weight: 600; }
+
+/* ── MAIN LAYOUT ── */
+.main { margin-left:240px; padding:2rem; width: calc(100% - 240px); }
+.page-title { font-size:1.5rem; font-weight:700; margin-bottom: 0.2rem; }
+.page-sub { color:var(--muted); margin-bottom: 2rem; }
+
+.grid-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.5rem; box-shadow:var(--shadow); }
+
+label { font-size:0.8rem; color:var(--muted); font-weight:600; text-transform:uppercase; margin-bottom: 0.4rem; display:block; }
+.inp { background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.8rem; color:var(--text); font-size:0.95rem; outline:none; width: 100%; margin-bottom: 1.2rem; font-family: inherit;}
+.inp:focus { border-color:var(--primary); }
+textarea.inp { resize: vertical; min-height: 150px; }
+
+.btn-primary { display:inline-flex; justify-content:center; align-items:center; background:var(--primary); color:#fff; border:none; padding:1rem; border-radius:var(--radius-sm); font-size:1rem; font-weight:600; cursor:pointer; width: 100%; transition: opacity 0.2s;}
+.btn-primary:hover { opacity: 0.9; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Output Styles */
+.output-box { background: var(--surface2); border: 1px dashed var(--border); padding: 1rem; border-radius: var(--radius-sm); margin-bottom: 1.2rem; white-space: pre-wrap; color: var(--text); min-height: 50px; }
+.tag { display: inline-block; background: var(--primary-light); color: var(--primary); padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.8rem; font-weight: 600; margin: 0.2rem; }
+
+@media (max-width: 800px) {
+  .sidebar { width: 0; padding: 0; border: none; overflow: hidden; }
+  .main { margin-left: 0; width: 100%; padding: 1rem; }
+  .grid-layout { grid-template-columns: 1fr; }
+  .sidebar-logo { display: none; }
+  .nav-item { padding: 0.5rem; }
+}
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-logo">Aezoon</div>
+  <a href="index.html" class="nav-item"><span>← Back to Dashboard</span></a>
+  <div class="nav-item active"><span>✨ AI Product Editor</span></div>
+</nav>
+
+<main class="main">
+  <div class="page-title">✨ AI Product Editor (SEO Optimizer)</div>
+  <div class="page-sub">Instantly rewrite your titles & descriptions with highly optimized SEO tags.</div>
+
+  <div class="grid-layout">
+    <!-- INPUT AREA -->
+    <div class="card">
+      <h3>Original Content</h3>
+      <p style="color:var(--muted); font-size:0.85rem; margin-bottom:1rem;">Paste your plain text here.</p>
+      
+      <label>Product Title</label>
+      <input class="inp" id="orig_title" placeholder="e.g. Wireless Mouse black color">
+      
+      <label>Product Description</label>
+      <textarea class="inp" id="orig_desc" placeholder="e.g. This is a wireless mouse. It has bluetooth and comes in black..."></textarea>
+      
+      <button class="btn-primary" id="genBtn" onclick="generateSEO()">🚀 Rewrite & Optimize (SEO)</button>
+      <p id="ai_status" style="color:var(--primary); font-size:0.85rem; margin-top:1rem; text-align:center; display:none;">AI is thinking...</p>
+    </div>
+
+    <!-- OUTPUT AREA -->
+    <div class="card">
+      <h3>AI Optimized Output</h3>
+      <p style="color:var(--muted); font-size:0.85rem; margin-bottom:1rem;">Ready to copy & paste.</p>
+
+      <label>SEO Title</label>
+      <div class="output-box" id="out_title">Result will appear here...</div>
+
+      <label>SEO Description</label>
+      <div class="output-box" id="out_desc">Result will appear here...</div>
+
+      <label>SEO Tags (8-12 Tags)</label>
+      <div id="out_tags" style="min-height: 50px; border: 1px dashed var(--border); padding: 0.5rem; border-radius: 6px; background: var(--surface2);">
+        <span style="color:var(--muted); font-size:0.9rem; padding:0.5rem">Tags will appear here...</span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// 1. FIREBASE CONFIGURATION (Must be EXACTLY same as index.html)
+const firebaseConfig = {
+  apiKey: "AIzaSyC_asx16rLu7LmC3d-jRVBESrQvfrceuVo",
+  authDomain: "aezoon-app.firebaseapp.com",
+  projectId: "aezoon-app",
+  storageBucket: "aezoon-app.firebasestorage.app",
+  messagingSenderId: "900605885255",
+  appId: "1:900605885255:web:ecaddb61a88ad344c1ea62",
+  measurementId: "G-BEK3YGHVVH"
+};
+
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// Load Theme
+document.body.setAttribute('data-theme', localStorage.getItem('aezoon_theme') || 'dark');
+
+// Fetch Settings from Firebase
+let aiConfig = { model: 'gemini', gemini_key: '', deepseek_key: '' };
+
+db.collection("settings").doc("ai_config").get().then((doc) => {
+  if (doc.exists) aiConfig = doc.data();
+});
+
+const SYSTEM_PROMPT = `You are a PREMIUM ELITE E-commerce SEO Copywriter. 
+I will provide a product title and description.
+Your task:
+1. Rewrite the Title using ## as a prefix for an ELITE look. Make it catchy, professional, and SEO optimized.
+2. Rewrite the Description to be highly persuasive, using **bold** for key features and benefits. Use bullet points for readability.
+3. DO NOT fabricate, invent, or add new features/specs that are not present.
+4. Generate 8 to 12 highly relevant SEO keywords/tags.
+
+OUTPUT FORMAT MUST BE A STRICT JSON OBJECT:
+{
+  "title": "## Premium Optimized Title",
+  "description": "**Key Feature:** Description text with **bold** highlights...",
+  "tags": ["tag1", "tag2", "..."]
+}`;
+
+async function generateSEO() {
+  const title = document.getElementById('orig_title').value.trim();
+  const desc = document.getElementById('orig_desc').value.trim();
+  if (!title || !desc) return alert("Please enter both title and description.");
+  
+  const model = aiConfig.model;
+  const key = model === 'gemini' ? aiConfig.gemini_key : aiConfig.deepseek_key;
+  
+  if (!key) return alert(`No API Key found for ${model.toUpperCase()}. Please add it in Dashboard Settings.`);
+
+  const btn = document.getElementById('genBtn');
+  const status = document.getElementById('ai_status');
+  btn.disabled = true;
+  status.style.display = 'block';
+
+  try {
+    let resultJSON = "";
+
+    if (model === 'gemini') {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts:[{ text: SYSTEM_PROMPT + "\n\nOriginal Title: " + title + "\nOriginal Description: " + desc }] }]
+        })
+      });
+      const data = await res.json();
+      resultJSON = data.candidates[0].content.parts[0].text;
+    } 
+    else if (model === 'deepseek') {
+      const res = await fetch("https://api.deepseek.com/chat/completions", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages:[
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: "Original Title: " + title + "\nOriginal Description: " + desc }
+          ],
+          response_format: { type: "json_object" }
+        })
+      });
+      const data = await res.json();
+      resultJSON = data.choices[0].message.content;
+    }
+
+    // Parse JSON safely (removing markdown code blocks if present)
+    let cleanJSON = resultJSON.replace(/```json/g, '').replace(/```/g, '').trim();
+    // Sometimes AI leaves extra text before/after JSON
+    const startIdx = cleanJSON.indexOf('{');
+    const endIdx = cleanJSON.lastIndexOf('}');
+    if(startIdx !== -1 && endIdx !== -1) {
+      cleanJSON = cleanJSON.substring(startIdx, endIdx + 1);
+    }
+    
+    const parsed = JSON.parse(cleanJSON);
+
+    // Update UI
+    document.getElementById('out_title').textContent = parsed.title;
+    document.getElementById('out_desc').textContent = parsed.description;
+    document.getElementById('out_tags').innerHTML = (parsed.tags || []).map(t => `<span class="tag">#${t}</span>`).join('');
+
+  } catch (error) {
+    console.error("AI Error:", error);
+    alert("Error: AI returned an invalid format. Please try again.");
+  } finally {
+    btn.disabled = false;
+    status.style.display = 'none';
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aezoon — Profit & Loss Dashboard</title>
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+<!-- NEW: Firebase Auth SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+<style>
+/* ── THEME VARIABLES ── */
+:root {
+  /* DARK THEME (Default) */
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --surface2: #334155;
+  --surface3: #475569;
+  --border: #334155;
+  --text: #f8fafc;
+  --muted: #94a3b8;
+  
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --primary-light: rgba(99, 102, 241, 0.15);
+  
+  --success: #10b981;
+  --success-light: rgba(16, 185, 129, 0.15);
+  
+  --warning: #f59e0b;
+  --warning-light: rgba(245, 158, 11, 0.15);
+  
+  --danger: #ef4444;
+  --danger-light: rgba(239, 68, 68, 0.15);
+  
+  --info: #0ea5e9;
+  --info-light: rgba(14, 165, 233, 0.15);
+
+  --radius: 12px;
+  --radius-sm: 6px;
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+}[data-theme="light"] {
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface2: #f1f5f9;
+  --surface3: #e2e8f0;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --muted: #64748b;
+  
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-light: rgba(79, 70, 229, 0.1);
+  
+  --success: #059669;
+  --success-light: rgba(5, 150, 105, 0.1);
+  
+  --warning: #d97706;
+  --warning-light: rgba(217, 119, 6, 0.1);
+  
+  --danger: #dc2626;
+  --danger-light: rgba(220, 38, 38, 0.1);
+  
+  --info: #0284c7;
+  --info-light: rgba(2, 132, 199, 0.1);
+
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.025);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; transition: background-color 0.3s, border-color 0.3s; }
+
+body { 
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+  background:var(--bg); 
+  color:var(--text); 
+  min-height:100vh; 
+  overflow-x:hidden;
+  font-size: 14px;
+}
+
+h1, h2, h3, h4 { font-weight: 600; color: var(--text); }
+
+/* ── LOCK SCREEN ── */
+#lockScreen { position:fixed; inset:0; background:var(--bg); z-index:9999; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:1.5rem; }
+.lock-logo { font-size:2.2rem; font-weight:700; color:var(--primary); }
+.lock-sub { color:var(--muted); font-size:0.95rem; text-align:center; margin-top:-0.5rem; }
+.lock-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:2rem; width:100%; max-width:380px; display:flex; flex-direction:column; gap:1.2rem; box-shadow:var(--shadow); }
+.lock-card h2 { font-size:1.2rem; text-align:center; }
+.lock-card p { color:var(--muted); font-size:0.85rem; text-align:center; }
+
+/* ── FORM ELEMENTS ── */
+.input-group { display:flex; flex-direction:column; gap:0.4rem; }
+label { font-size:0.8rem; color:var(--muted); font-weight:500; text-transform:uppercase; letter-spacing:0.03em; }
+.inp { background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.65rem 0.8rem; color:var(--text); font-family: inherit; font-size:0.9rem; outline:none; transition:all 0.2s; width: 100%; }
+.inp:focus { border-color:var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+select.inp option { background:var(--surface); color:var(--text); }
+
+/* ── BUTTONS ── */
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:0.4rem; border:none; border-radius:var(--radius-sm); padding:0.65rem 1rem; font-family: inherit; font-size:0.9rem; font-weight:500; cursor:pointer; transition:all 0.2s; text-decoration: none; }
+.btn:hover { transform:translateY(-1px); }
+.btn:active { transform:translateY(0); }
+.btn-primary { background:var(--primary); color:#fff; box-shadow:var(--shadow-sm); }
+.btn-primary:hover { background:var(--primary-hover); }
+.btn-outline { background:transparent; border:1px solid var(--border); color:var(--text); }
+.btn-outline:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-light); }
+.btn-danger { background:var(--danger-light); color:var(--danger); border:1px solid transparent; }
+.btn-danger:hover { border-color:var(--danger); }
+.btn-sm { padding:0.4rem 0.7rem; font-size:0.8rem; }
+.lock-error { color:var(--danger); font-size:0.85rem; text-align:center; display:none; background:var(--danger-light); padding: 0.5rem; border-radius: var(--radius-sm); }
+
+
+/* ── APP SHELL ── */
+#app { display:none; }
+.shell { display:flex; min-height:100vh; }
+
+/* ── SIDEBAR ── */
+.sidebar { width:240px; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; padding:1.2rem 1rem; gap:0.4rem; position:fixed; top:0; left:0; height:100vh; z-index:100; }
+.sidebar-logo { font-size:1.5rem; font-weight:700; color:var(--primary); padding:0.5rem 1rem 1.5rem; }
+.nav-item { display:flex; align-items:center; gap:0.7rem; padding:0.7rem 1rem; border-radius:var(--radius-sm); color:var(--muted); cursor:pointer; font-size:0.9rem; font-weight:500; transition:all 0.2s; border:1px solid transparent; user-select:none; text-decoration: none;}
+.nav-item:hover { background:var(--surface2); color:var(--text); }
+.nav-item.active { background:var(--primary-light); border-color:var(--primary); color:var(--primary); font-weight: 600; }
+.nav-item svg { width:18px; height:18px; flex-shrink:0; }
+.sidebar-bottom { margin-top:auto; display:flex; flex-direction:column; gap:0.5rem; }
+.sidebar-ver { font-size:0.75rem; color:var(--muted); padding:0.5rem 1rem; text-align: center; }
+.tag-soon { font-size: 0.65rem; background: var(--primary-light); color: var(--primary); padding: 0.15rem 0.4rem; border-radius: 4px; font-weight: 700; text-transform: uppercase; margin-left: auto; letter-spacing: 0.05em; }
+
+/* ── MAIN ── */
+.main { margin-left:240px; padding:1.5rem 2rem; min-height:100vh; flex:1; width: calc(100% - 240px); }
+.page { display:none; animation: fadeIn 0.2s ease-in-out; }
+.page.active { display:block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+.page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:2rem; gap:1rem; flex-wrap:wrap; }
+.page-title { font-size:1.5rem; font-weight:700; color:var(--text); }
+.page-sub { color:var(--muted); font-size:0.85rem; margin-top:0.2rem; }
+.sync-badge { display:inline-flex; align-items:center; gap:0.4rem; background:var(--success-light); color:var(--success); padding:0.3rem 0.6rem; border-radius:30px; font-size:0.7rem; font-weight:700; letter-spacing:0.03em; border:1px solid var(--success); }
+.sync-dot { width:6px; height:6px; background:var(--success); border-radius:50%; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: 0.5; } 100% { transform: scale(1); opacity: 1; } }
+
+/* ── CARDS ── */
+.card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.2rem; box-shadow:var(--shadow-sm); }
+.card h3 { font-size: 1rem; margin-bottom: 1rem; color: var(--text); }
+
+/* ── STAT CARDS ── */
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1.2rem; margin-bottom:2rem; }
+.stat-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.2rem; position:relative; overflow:hidden; box-shadow:var(--shadow-sm); border-left: 4px solid var(--primary); }
+.stat-card.c1 { border-left-color: var(--primary); }
+.stat-card.c2 { border-left-color: var(--success); }
+.stat-card.c3 { border-left-color: var(--warning); }
+.stat-card.c4 { border-left-color: var(--danger); }
+.stat-card.c5 { border-left-color: var(--info); }
+.stat-label { font-size:0.75rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.4rem; }
+.stat-val { font-size:1.4rem; font-weight:700; line-height:1.2; color: var(--text); }
+.stat-sub { font-size:0.75rem; color:var(--muted); margin-top:0.4rem; }
+.stat-icon { position:absolute; top:1rem; right:1rem; font-size:1.2rem; opacity:0.8; background: var(--surface2); border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
+
+/* ── DATE RANGE ── */
+.date-filter { display:flex; align-items:center; gap:0.6rem; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.4rem; flex-wrap:wrap; box-shadow:var(--shadow-sm); }
+.date-filter label { font-size:0.8rem; color:var(--muted); font-weight: 500; margin-left: 0.4rem; }
+.date-filter input[type=date] { background:var(--surface2); border:1px solid var(--border); border-radius:4px; padding:0.3rem 0.5rem; color:var(--text); font-family: inherit; font-size:0.8rem; cursor:pointer; outline: none; }[data-theme="dark"] .date-filter input[type=date]::-webkit-calendar-picker-indicator { filter:invert(1); opacity:0.6; cursor: pointer; }
+
+/* ── CHARTS ── */
+.charts-row { display:grid; grid-template-columns:2fr 1fr; gap:1.2rem; margin-bottom:2rem; }
+.chart-wrap { position:relative; height:260px; }
+
+/* ── TABLE ── */
+.table-wrap { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+th { padding:0.8rem; text-align:left; color:var(--muted); font-weight:600; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.03em; border-bottom:1px solid var(--border); background: var(--surface2); }
+th:first-child { border-top-left-radius: var(--radius-sm); }
+th:last-child { border-top-right-radius: var(--radius-sm); }
+td { padding:0.8rem; border-bottom:1px solid var(--border); }
+tr:hover td { background:var(--surface2); }
+tr:last-child td { border-bottom:none; }
+
+/* ── BADGES ── */
+.badge { display:inline-flex; align-items:center; justify-content:center; gap:0.3rem; padding:0.25rem 0.6rem; border-radius:20px; font-size:0.75rem; font-weight:600; }
+.badge-delivered { background:var(--success-light); color:var(--success); }
+.badge-processing { background:var(--warning-light); color:var(--warning); }
+.badge-shipped { background:var(--primary-light); color:var(--primary); }
+.badge-unfulfilled { background:var(--info-light); color:var(--info); }
+.badge-returned { background:rgba(147, 51, 234, 0.15); color:#9333ea; } 
+.badge-cancel { background:var(--danger-light); color:var(--danger); }
+.badge-fake { background:var(--surface3); color:var(--muted); }
+
+/* ── MODALS ── */
+.modal-bg { position:fixed; inset:0; background:rgba(0,0,0,0.5); backdrop-filter:blur(3px); z-index:500; display:none; align-items:center; justify-content:center; padding:1rem; opacity: 0; transition: opacity 0.2s; }
+.modal-bg.open { display:flex; opacity: 1; }
+.modal { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); width:100%; max-width:550px; max-height:90vh; overflow-y:auto; padding:1.5rem; box-shadow:var(--shadow); transform: translateY(15px); transition: transform 0.2s; }
+.modal-bg.open .modal { transform: translateY(0); }
+.modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.2rem; padding-bottom: 0.8rem; border-bottom: 1px solid var(--border); }
+.modal-header h3 { font-size:1.1rem; color: var(--text); }
+.modal-close { background:var(--surface2); border:none; color:var(--muted); cursor:pointer; width:28px; height:28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition:all 0.2s; }
+.modal-close:hover { background: var(--danger-light); color:var(--danger); }
+.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+.form-grid .full { grid-column:1/-1; }
+.form-row { display:flex; flex-direction:column; gap:0.3rem; }
+.form-actions { display:flex; gap:0.8rem; justify-content:flex-end; margin-top:1.5rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+
+/* ── DETAILS MODAL ── */
+.order-detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.2rem; }
+.detail-row { display:flex; flex-direction:column; gap:0.2rem; background: var(--surface2); padding: 0.8rem; border-radius: var(--radius-sm); }
+.detail-label { font-size:0.7rem; color:var(--muted); font-weight: 600; text-transform:uppercase; letter-spacing:0.03em; }
+.detail-val { font-size:0.9rem; font-weight:500; color: var(--text); }
+
+/* ── EXPENSE LIST ── */
+.exp-list { display:flex; flex-direction:column; gap:0.8rem; margin-top:1.2rem; }
+.exp-item { display:flex; align-items:center; gap:1rem; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:1rem; box-shadow: var(--shadow-sm); }
+.exp-icon { width:40px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0; }
+.exp-icon.expense { background:var(--danger-light); color: var(--danger); }
+.exp-icon.profit { background:var(--success-light); color: var(--success); }
+.exp-info { flex:1; }
+.exp-title { font-weight:600; font-size:0.95rem; margin-bottom: 0.1rem; }
+.exp-date { font-size:0.8rem; color:var(--muted); }
+.exp-amount { font-weight:600; font-size:1rem; margin-right: 1rem; }
+.exp-amount.expense { color:var(--danger); }
+.exp-amount.profit { color:var(--success); }
+
+/* ── CUSTOMER TAGS ── */
+.cust-tag { display:inline-flex; align-items:center; gap:0.2rem; padding:0.18rem 0.5rem; border-radius:20px; font-size:0.7rem; font-weight:700; white-space:nowrap; }
+.tag-vip { background:rgba(245,158,11,0.15); color:#f59e0b; border:1px solid rgba(245,158,11,0.3); }
+.tag-top5 { background:rgba(99,102,241,0.15); color:#6366f1; border:1px solid rgba(99,102,241,0.3); }
+.tag-repeat { background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3); }
+.tag-new { background:rgba(14,165,233,0.15); color:#0ea5e9; border:1px solid rgba(14,165,233,0.3); }
+.tag-returned { background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.3); }
+.tag-bigspender { background:rgba(147,51,234,0.15); color:#9333ea; border:1px solid rgba(147,51,234,0.3); }
+.tag-loyal { background:rgba(236,72,153,0.15); color:#ec4899; border:1px solid rgba(236,72,153,0.3); }
+.tag-manual { background:var(--surface3); color:var(--muted); border:1px solid var(--border); }
+
+/* ── GOALS ── */
+.goals-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:1.2rem; }
+.goal-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.2rem; box-shadow: var(--shadow-sm); }
+.goal-name { font-size:1rem; font-weight:600; margin-bottom:0.4rem; }
+.goal-range { font-size:0.8rem; color:var(--muted); margin-bottom:1rem; display: flex; align-items: center; gap: 0.4rem; }
+.goal-amounts { display:flex; justify-content:space-between; margin-bottom:0.6rem; font-size:0.85rem; }
+.goal-bar-bg { background:var(--surface3); border-radius:20px; height:8px; overflow:hidden; }
+.goal-bar-fill { height:100%; border-radius:20px; transition:width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+.goal-pct { text-align:right; font-size:0.8rem; font-weight: 500; color:var(--muted); margin-top:0.4rem; }
+
+/* ── PENDING ORDERS ── */
+.pending-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:1.2rem; }
+.pending-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.2rem; cursor:pointer; transition:all 0.2s; box-shadow: var(--shadow-sm); }
+.pending-card:hover { border-color:var(--primary); transform:translateY(-2px); box-shadow: var(--shadow); }
+.pending-card-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.8rem; }
+.pending-name { font-weight:600; font-size:1rem; margin-bottom: 0.2rem; }
+.pending-meta { font-size:0.8rem; color:var(--muted); margin-bottom:0.2rem; }
+.pending-actions { display:flex; gap:0.6rem; margin-top:1rem; flex-wrap:wrap; border-top: 1px solid var(--border); padding-top: 0.8rem; }
+
+/* ── SETTINGS ── */
+.settings-section { margin-bottom:2rem; }
+.settings-section h3 { font-size:1rem; font-weight:600; margin-bottom:0.8rem; color:var(--text); }
+.settings-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.2rem; display:flex; flex-direction:column; gap:1rem; max-width:500px; box-shadow: var(--shadow-sm); }
+
+/* ── TOAST ── */
+#toast { position:fixed; bottom:1.5rem; right:1.5rem; background:var(--surface); border:1px solid var(--border); border-left: 4px solid var(--primary); border-radius:var(--radius-sm); padding:0.8rem 1.2rem; font-size:0.9rem; font-weight: 500; z-index:9000; transform:translateY(100px); opacity:0; transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); max-width:320px; box-shadow:var(--shadow); display: flex; align-items: center; gap: 0.6rem; }
+#toast.show { transform:translateY(0); opacity:1; }
+#toast.success { border-left-color: var(--success); }
+#toast.error { border-left-color: var(--danger); }
+#toast.warning { border-left-color: var(--warning); }
+
+/* ── UTILS ── */
+.empty { text-align:center; padding:3rem 1.5rem; color:var(--muted); background: var(--surface2); border-radius: var(--radius); border: 1px dashed var(--border); }
+.empty-icon { font-size:2rem; margin-bottom:0.8rem; opacity: 0.8; }
+.empty-text { font-size:0.9rem; font-weight: 500; }
+.flex-row { display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--surface3); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:var(--muted); }
+
+@media(max-width:900px){
+  .sidebar { width:60px; padding:1.2rem 0.5rem; }
+  .sidebar-logo, .nav-item span, .sidebar-ver, .sidebar-bottom .btn-outline, .tag-soon { display:none; }
+  .nav-item { justify-content: center; padding: 1rem; border-radius: 10px; }
+  .main { margin-left:60px; width: calc(100% - 60px); padding:1rem; }
+  .charts-row { grid-template-columns:1fr; gap: 1rem; }
+  .form-grid { grid-template-columns:1fr; }
+  .order-detail-grid { grid-template-columns:1fr; }
+  .page-header { flex-direction: column; align-items: stretch; gap: 1rem; text-align: left; }
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+  .stat-val { font-size: 1.1rem; }
+  .stat-card { padding: 1rem; }
+}
+
+@media(max-width:600px){
+  .sidebar { width: 55px; }
+  .main { margin-left: 55px; width: calc(100% - 55px); padding: 0.8rem; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .page-title { font-size: 1.25rem; }
+  .stat-val { font-size: 1.05rem; }
+  .btn { width: 100%; justify-content: center; padding: 0.8rem; }
+  .date-filter { flex-direction: column; align-items: stretch; padding: 0.8rem; }
+  .date-filter div { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+  table { font-size: 0.75rem; }
+  th, td { padding: 0.6rem 0.4rem; }
+}
+
+@media(max-width:400px){
+  .stats-grid { grid-template-columns: 1fr; }
+  .sidebar { width: 50px; }
+  .main { margin-left: 50px; width: calc(100% - 50px); }
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN (FIREBASE AUTH) -->
+<div id="lockScreen" style="display:none;">
+  <div class="lock-logo">Aezoon</div>
+  <p class="lock-sub">Admin Login</p>
+  <div class="lock-card" id="lockCard">
+    <h2 id="lockTitle">🔐 Secure Access</h2>
+    <p id="lockDesc">Enter your admin email and password.</p>
+    
+    <div class="input-group">
+      <label>Email Address</label>
+      <input class="inp" id="loginEmail" type="email" placeholder="admin@aezoon.com">
+    </div>
+    
+    <div class="input-group">
+      <label>Password</label>
+      <input class="inp" id="loginPass" type="password" placeholder="••••••••">
+    </div>
+    
+    <div class="lock-error" id="lockError"></div>
+    
+    <button class="btn btn-primary" id="loginBtn" style="padding: 0.8rem; font-size: 0.95rem; margin-top:0.5rem;" onclick="handleLogin()">Login to Dashboard</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+<div class="shell">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">Aezoon</div>
+  <div class="nav-item active" onclick="nav('dashboard')" id="nav-dashboard">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    <span>Dashboard</span>
+  </div>
+  <div class="nav-item" onclick="nav('orders')" id="nav-orders">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+    <span>Orders</span>
+  </div>
+  <div class="nav-item" onclick="nav('expenses')" id="nav-expenses">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+    <span>Expenses</span>
+  </div>
+  <div class="nav-item" onclick="nav('pending')" id="nav-pending">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm0 5v5l4 2"/></svg>
+    <span>Pending Orders</span>
+  </div>
+  <div class="nav-item" onclick="nav('customers')" id="nav-customers">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span>Customers</span>
+  </div>
+  <div class="nav-item" onclick="nav('aigoals')" id="nav-aigoals">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+    <span>AI Goals</span>
+  </div>
+  <a href="statement.html" class="nav-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="16" y1="2" x2="16" y2="4"/><line x1="8" y1="2" x2="8" y2="4"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    <span>Quick Statement</span>
+  </a>
+  <div class="nav-item" onclick="nav('settings')" id="nav-settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    <span>Settings</span>
+  </div>
+
+  <div class="sidebar-bottom">
+    <a href="ai-editor.html" class="nav-item" style="background: var(--surface2); border: 1px dashed var(--border); border-radius: 8px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+      <span style="flex:1; color: var(--text);">AI Editor</span>
+      <span class="tag-soon">Soon</span>
+    </a>
+
+    <div class="sidebar-ver">Aezoon Cloud v2.1</div>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+
+  <!-- DASHBOARD PAGE -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-header">
+      <div>
+        <div class="page-title">📊 Dashboard <span class="sync-badge"><div class="sync-dot"></div> LIVE SYNC</span></div>
+        <div class="page-sub">Real-time Profit & Loss Overview</div>
+      </div>
+      <div class="date-filter">
+        <label>From</label>
+        <input type="date" id="dash-from" onchange="renderDashboard()">
+        <label>To</label>
+        <input type="date" id="dash-to" onchange="renderDashboard()">
+        <button class="btn btn-outline btn-sm" onclick="resetDateFilter()">All Time</button>
+      </div>
+    </div>
+
+    <div class="stats-grid" id="dashStats"></div>
+
+    <div class="charts-row">
+      <div class="card">
+        <h3>Revenue vs Expenses</h3>
+        <div class="chart-wrap"><canvas id="chartLine"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Order Status</h3>
+        <div class="chart-wrap"><canvas id="chartDoughnut"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>🏆 Recent Completed Orders</h3>
+      <div class="table-wrap">
+        <table id="recentOrdersTable">
+          <thead><tr><th>Customer</th><th>Product</th><th>Revenue</th><th>Profit</th><th>Date</th><th>Status</th></tr></thead>
+          <tbody id="recentOrdersBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORDERS PAGE -->
+  <div class="page" id="page-orders">
+    <div class="page-header">
+      <div>
+        <div class="page-title">📦 Orders</div>
+        <div class="page-sub">Manage all customer orders</div>
+      </div>
+      <button class="btn btn-primary" onclick="openOrderModal()">+ Add Order</button>
+    </div>
+    <div class="flex-row" style="margin-bottom:1.5rem;">
+      <input class="inp" id="orderSearch" placeholder="🔍 Search by name or product..." style="flex:1; max-width:350px;" oninput="renderOrders()">
+      <select class="inp" id="orderFilter" onchange="renderOrders()" style="max-width:180px;">
+        <option value="">All Statuses</option>
+        <option value="delivered">Delivered</option>
+        <option value="shipped">Shipped</option>
+        <option value="processing">Processing</option>
+        <option value="unfulfilled">Unfulfilled</option>
+        <option value="returned">Returned</option>
+        <option value="cancel">Cancelled</option>
+        <option value="fake">Fake</option>
+      </select>
+    </div>
+    <div class="card" style="padding: 0; overflow: hidden;">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Customer</th><th>Location</th><th>Product</th><th>Total</th><th>Profit</th><th>Status</th><th>Date</th><th>Action</th></tr></thead>
+          <tbody id="ordersBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPENSES PAGE -->
+  <div class="page" id="page-expenses">
+    <div class="page-header">
+      <div>
+        <div class="page-title">💸 Expenses & Income</div>
+        <div class="page-sub">Track all additional costs and revenues</div>
+      </div>
+      <button class="btn btn-primary" onclick="openExpModal()">+ Add Entry</button>
+    </div>
+    <div class="stats-grid" id="expStats"></div>
+    <div class="exp-list" id="expList"></div>
+  </div>
+
+  <!-- PENDING PAGE -->
+  <div class="page" id="page-pending">
+    <div class="page-header">
+      <div>
+        <div class="page-title">⏳ Pending Orders</div>
+        <div class="page-sub">Orders requiring attention (Processing, Shipped, Unfulfilled)</div>
+      </div>
+    </div>
+    <div class="pending-grid" id="pendingGrid"></div>
+  </div>
+
+  <!-- CUSTOMERS PAGE -->
+  <div class="page" id="page-customers">
+    <div class="page-header">
+      <div>
+        <div class="page-title">👥 Customers</div>
+        <div class="page-sub">All customers — auto-synced from orders</div>
+      </div>
+      <button class="btn btn-primary" onclick="openCustomerModal()">+ Add Customer</button>
+    </div>
+    <div class="stats-grid" id="custStats" style="margin-bottom:1.5rem;"></div>
+    <div class="flex-row" style="margin-bottom:1.2rem;">
+      <input class="inp" id="custSearch" placeholder="🔍 Search by name, phone or city..." style="flex:1;max-width:380px;" oninput="renderCustomers()">
+      <select class="inp" id="custTagFilter" onchange="renderCustomers()" style="max-width:180px;">
+        <option value="">All Tags</option>
+        <option value="vip">⭐ VIP</option>
+        <option value="top5">🏆 Top 5</option>
+        <option value="repeat">🔁 Repeat</option>
+        <option value="new">🆕 New</option>
+        <option value="returned">↩️ Returned</option>
+        <option value="bigspender">💎 Big Spender</option>
+      </select>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Customer</th>
+              <th>City</th>
+              <th>Phone</th>
+              <th>Orders</th>
+              <th>Total Spent</th>
+              <th>Total Profit</th>
+              <th>Tags</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="custBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI GOALS PAGE -->
+  <div class="page" id="page-aigoals">
+    <div class="page-header">
+      <div>
+        <div class="page-title">🎯 AI Goals</div>
+        <div class="page-sub">AI-powered profit targets — auto-updated from gross profit</div>
+      </div>
+      <button class="btn btn-primary" onclick="openAiGoalModal()">+ New Goal</button>
+    </div>
+    <div class="stats-grid" id="aiGoalStats" style="margin-bottom:1.5rem;"></div>
+    <div class="goals-grid" id="aiGoalsGrid"></div>
+  </div>
+
+  <!-- SETTINGS PAGE -->
+  <div class="page" id="page-settings">
+    <div class="page-header">
+      <div>
+        <div class="page-title">⚙️ Settings</div>
+        <div class="page-sub">Configure your dashboard & Database</div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>☁️ Real-time Cloud Sync</h3>
+      <div class="settings-card" style="border-color: var(--success);">
+        <p style="font-size:0.85rem; color:var(--muted);">
+          Your data is 100% synchronized across all devices via Firebase Firestore. No manual sync required.
+        </p>
+        <div class="flex-row">
+          <div class="sync-badge"><div class="sync-dot"></div> Cloud Connected (All Devices)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>🎨 Appearance</h3>
+      <div class="settings-card">
+        <div class="flex-row" style="justify-content: space-between;">
+          <div>
+            <strong style="font-size: 0.95rem;">Theme Mode</strong>
+            <p style="font-size:0.8rem; color:var(--muted); margin-top:0.2rem;">Switch between Light and Dark mode</p>
+          </div>
+          <button class="btn btn-outline" id="themeToggleBtn" onclick="toggleTheme()">☀️ Light Mode</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>🔐 Update Password</h3>
+      <div class="settings-card">
+        <p style="font-size:0.85rem; color:var(--muted);">Update your current Firebase account password.</p>
+        <div class="form-row"><label>New Password</label><input class="inp" id="sNewPass" type="password"></div>
+        <div class="form-row"><label>Confirm Password</label><input class="inp" id="sConfPass" type="password"></div>
+        <button class="btn btn-primary" style="width: fit-content;" onclick="changePassword()">Update Password</button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>🤖 AI Configuration</h3>
+      <div class="settings-card">
+        <p style="font-size:0.85rem; color:var(--muted);">Configure your AI settings for the Product Editor.</p>
+        <div class="form-row">
+          <label>AI Model</label>
+          <select class="inp" id="sAiModel">
+            <option value="gemini">Google Gemini</option>
+            <option value="deepseek">DeepSeek AI</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Gemini API Key</label>
+          <input class="inp" id="sGeminiKey" type="password" placeholder="AIza...">
+        </div>
+        <div class="form-row">
+          <label>DeepSeek API Key</label>
+          <input class="inp" id="sDeepSeekKey" type="password" placeholder="sk-...">
+        </div>
+        <button class="btn btn-primary" style="width: fit-content;" onclick="saveAiConfig()">Save AI Config</button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>☁️ Cloud Management</h3>
+      <div class="settings-card" style="border-color: var(--warning-light);">
+        <p style="font-size:0.85rem; color:var(--muted);">Select a collection to delete from Cloud (Firebase) permanently.</p>
+        <div class="flex-row">
+          <select class="inp" id="cloudDelType" style="max-width:200px;">
+            <option value="orders">Orders</option>
+            <option value="expenses">Expenses</option>
+            <option value="goals">Goals</option>
+          </select>
+          <button class="btn btn-danger" onclick="confirmCloudDelete()">🗑 Delete Cloud Collection</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>🧹 Local Danger Zone</h3>
+      <div class="settings-card" style="border-color: var(--danger-light);">
+        <p style="font-size:0.85rem; color:var(--muted);">Danger: Sign out of all sessions. This will not delete cloud data.</p>
+        <div class="flex-row">
+          <button class="btn btn-danger" onclick="handleLogout()">🚪 Logout & Disconnect</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+</div>
+</div>
+
+<!-- MODALS -->
+<!-- ADD ORDER MODAL -->
+<div class="modal-bg" id="orderModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>📦 Add New Order</h3>
+      <button class="modal-close" onclick="closeModal('orderModal')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-row"><label>Order # *</label><input class="inp" id="o_id_custom" placeholder="#1001" value="#"></div>
+      <div class="form-row"><label>Customer Name *</label><input class="inp" id="o_name" placeholder="John Doe"></div>
+      <div class="form-row full"><label>Shipping Address *</label><input class="inp" id="o_addr" placeholder="Street, Area"></div>
+      <div class="form-row"><label>City *</label>
+        <select class="inp" id="o_city">
+          <option value="">— Select City —</option>
+          <option>Abu Dhabi</option>
+          <option>Dubai</option>
+          <option>Sharjah</option>
+          <option>Ajman</option>
+          <option>Umm Al Quwain</option>
+          <option>Ras Al Khaimah</option>
+          <option>Fujairah</option>
+          <option>Al Ain</option>
+          <option>Khor Fakkan</option>
+          <option>Dibba Al Fujairah</option>
+          <option>Dibba Al Hisn</option>
+          <option>Kalba</option>
+          <option>Madinat Zayed</option>
+          <option>Ruwais</option>
+          <option>Liwa Oasis</option>
+          <option>Dhaid</option>
+          <option>Ghayathi</option>
+          <option>Hatta</option>
+          <option>Jebel Ali</option>
+          <option>Al Quoz</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Customer Phone *</label><input class="inp" id="o_phone" placeholder="+971 5X XXX XXXX"></div>
+      <div class="form-row full"><label>Email (optional)</label><input class="inp" id="o_email" placeholder="email@example.com" type="email"></div>
+      <div class="form-row"><label>Age (optional)</label><input class="inp" id="o_age" type="number" placeholder="e.g. 28" min="1" max="100"></div>
+      <div class="form-row"><label>Gender (optional)</label>
+        <select class="inp" id="o_gender">
+          <option value="">— Select —</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Shipping Fee</label>
+        <select class="inp" id="o_shiptype" onchange="toggleShipFee()">
+          <option value="free">Free Shipping</option>
+          <option value="custom">Custom Amount</option>
+        </select>
+      </div>
+      <div class="form-row" id="o_shipfee_row" style="display:none"><label>Shipping Fee (AED)</label><input class="inp" id="o_shipfee" type="number" placeholder="20" oninput="calcTotal()"></div>
+      <div class="form-row full"><label>Product Title *</label><input class="inp" id="o_prod" placeholder="Product Name"></div>
+      <div class="form-row"><label>Product Price (AED) *</label><input class="inp" id="o_price" type="number" placeholder="100" oninput="calcTotal()"></div>
+      <div class="form-row"><label>Profit per Unit (AED) *</label><input class="inp" id="o_profit" type="number" placeholder="30" oninput="calcTotal()"></div>
+      <div class="form-row"><label>Quantity *</label><input class="inp" id="o_qty" type="number" placeholder="1" value="1" oninput="calcTotal()"></div>
+      <div class="form-row"><label>Total Price (auto)</label><input class="inp" id="o_total" readonly placeholder="Auto" style="opacity:0.7"></div>
+      <div class="form-row"><label>Order Status *</label>
+        <select class="inp" id="o_status">
+          <option value="unfulfilled">Unfulfilled</option>
+          <option value="processing">Processing</option>
+          <option value="shipped">Shipped</option>
+          <option value="delivered">Delivered</option>
+          <option value="returned">Returned</option>
+          <option value="cancel">Cancelled</option>
+          <option value="fake">Fake</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Date</label><input class="inp" id="o_date" type="date"></div>
+      <div class="form-row full"><label>Notes (optional)</label><textarea class="inp" id="o_notes" rows="2" placeholder="Notes..."></textarea></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-outline" onclick="closeModal('orderModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveOrder()">Save Order</button>
+    </div>
+  </div>
+</div>
+
+<!-- ORDER DETAIL MODAL -->
+<div class="modal-bg" id="orderDetailModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>📋 Order Details</h3>
+      <button class="modal-close" onclick="closeModal('orderDetailModal')">✕</button>
+    </div>
+    <div id="orderDetailContent"></div>
+  </div>
+</div>
+
+<!-- EXPENSE MODAL -->
+<div class="modal-bg" id="expModal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <h3>💸 Add Entry</h3>
+      <button class="modal-close" onclick="closeModal('expModal')">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:1rem;">
+      <div class="form-row"><label>Title *</label><input class="inp" id="e_title" placeholder="e.g. FB Ads"></div>
+      <div class="form-row"><label>Type *</label>
+        <select class="inp" id="e_type">
+          <option value="expense">Expense</option>
+          <option value="profit">Income / Profit</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Amount (AED) *</label><input class="inp" id="e_amount" type="number" placeholder="50"></div>
+      
+      <!-- TAX FEATURE -->
+      <div class="form-row" style="margin-top: 0.2rem;">
+        <div style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.8rem; color:var(--primary); font-weight:600;" onclick="toggleTax()">
+          <span id="taxArrow">▶</span> Add Tax (Optional)
+        </div>
+      </div>
+      <div class="form-row" id="taxRow" style="display:none; margin-top: 0.2rem;">
+        <label>Tax Amount (AED)</label>
+        <input class="inp" id="e_tax" type="number" placeholder="0">
+      </div>
+
+      <div class="form-row"><label>Date</label><input class="inp" id="e_date" type="date"></div>
+      <div class="form-row"><label>Notes</label><input class="inp" id="e_notes" placeholder="Optional notes"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-outline" onclick="closeModal('expModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveExpense()">Save Entry</button>
+    </div>
+  </div>
+</div>
+
+<!-- CUSTOMER MODAL -->
+<div class="modal-bg" id="customerModal">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <h3 id="custModalTitle">👤 Add Customer</h3>
+      <button class="modal-close" onclick="closeModal('customerModal')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-row full"><label>Full Name *</label><input class="inp" id="cm_name" placeholder="e.g. Ahmed Ali"></div>
+      <div class="form-row"><label>Phone *</label><input class="inp" id="cm_phone" placeholder="+971 5X XXX XXXX"></div>
+      <div class="form-row"><label>City</label><input class="inp" id="cm_city" placeholder="Dubai"></div>
+      <div class="form-row full"><label>Address</label><input class="inp" id="cm_address" placeholder="Street, Area"></div>
+      <div class="form-row"><label>Email</label><input class="inp" id="cm_email" type="email" placeholder="email@example.com"></div>
+      <div class="form-row"><label>Notes</label><input class="inp" id="cm_notes" placeholder="Optional notes"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-outline" onclick="closeModal('customerModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCustomer()">Save Customer</button>
+    </div>
+  </div>
+</div>
+
+<!-- CUSTOMER DETAIL MODAL -->
+<div class="modal-bg" id="customerDetailModal">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-header">
+      <h3>👤 Customer Profile</h3>
+      <button class="modal-close" onclick="closeModal('customerDetailModal')">✕</button>
+    </div>
+    <div id="customerDetailContent"></div>
+  </div>
+</div>
+
+<!-- AI GOAL MODAL -->
+<div class="modal-bg" id="aiGoalModal">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header">
+      <h3>🎯 Create AI Goal</h3>
+      <button class="modal-close" onclick="closeModal('aiGoalModal')">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:1rem;">
+      <div class="form-row">
+        <label>Goal Name *</label>
+        <input class="inp" id="ag_name" placeholder="e.g. Q2 Revenue Target">
+      </div>
+      <div class="form-row">
+        <label>Target Amount (AED) *</label>
+        <input class="inp" id="ag_target" type="number" placeholder="10000" oninput="aiGoalPreview()">
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Start Date *</label>
+          <input class="inp" id="ag_from" type="date" onchange="aiGoalPreview()">
+        </div>
+        <div class="form-row">
+          <label>End Date *</label>
+          <input class="inp" id="ag_to" type="date" onchange="aiGoalPreview()">
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Goal Type</label>
+        <select class="inp" id="ag_type">
+          <option value="gross_profit">Gross Profit (Orders only)</option>
+          <option value="net_profit">Net Profit (After expenses)</option>
+          <option value="revenue">Total Revenue</option>
+          <option value="orders">Order Count</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Notes (optional)</label>
+        <input class="inp" id="ag_notes" placeholder="e.g. Ramadan campaign target">
+      </div>
+      <!-- Live Preview -->
+      <div id="agPreview" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:0.9rem;">
+        <div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:0.6rem;">Live Preview</div>
+        <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:0.3rem;">
+          <span>Current in range:</span><strong id="agPreviewCur" style="color:var(--primary)">AED 0</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:0.5rem;">
+          <span>Progress:</span><strong id="agPreviewPct" style="color:var(--primary)">0%</strong>
+        </div>
+        <div class="goal-bar-bg"><div id="agPreviewBar" class="goal-bar-fill" style="width:0%;background:var(--warning);"></div></div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-outline" onclick="closeModal('aiGoalModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAiGoal()">Save Goal</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- Script dependencies -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<script>
+// Configure Chart JS Font
+Chart.defaults.font.family = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+
+// ══════════════════════════════════════════════════════════════
+// 1. FIREBASE CONFIGURATION (PASTE YOUR KEYS HERE)
+// ══════════════════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyC_asx16rLu7LmC3d-jRVBESrQvfrceuVo",
+  authDomain: "aezoon-app.firebaseapp.com",
+  projectId: "aezoon-app",
+  storageBucket: "aezoon-app.firebasestorage.app",
+  messagingSenderId: "900605885255",
+  appId: "1:900605885255:web:ecaddb61a88ad344c1ea62",
+  measurementId: "G-BEK3YGHVVH"
+};
+
+if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+const db = firebase.firestore();
+const auth = firebase.auth(); // NEW FIREBASE AUTH
+
+// ══════════════════════════════════════════════════════════════
+// 2. REAL-TIME DATA MANAGER (Centralized Logic)
+// ══════════════════════════════════════════════════════════════
+let GLOBAL_ORDERS = [], GLOBAL_EXPENSES = [], GLOBAL_GOALS = [];
+
+const DataManager = {
+  // --- ORDERS ---
+  async deleteOrder(id) {
+    if(!confirm('Delete this order permanently?')) return;
+    try {
+      await db.collection("orders").doc(id).delete();
+      GLOBAL_ORDERS = GLOBAL_ORDERS.filter(o => o.id !== id);
+      this.refreshUI();
+      toast('Order Deleted Successfully', 'success');
+    } catch(e) { toast('Error deleting order: '+e.message, 'error'); }
+  },
+  async updateOrderStatus(id, newStatus) {
+    try {
+      await db.collection("orders").doc(id).update({ status: newStatus });
+      const idx = GLOBAL_ORDERS.findIndex(o => o.id === id);
+      if(idx !== -1) GLOBAL_ORDERS[idx].status = newStatus;
+      this.refreshUI();
+      toast('Status Updated!', 'success');
+    } catch(e) { toast('Error updating status: '+e.message, 'error'); }
+  },
+
+  // --- EXPENSES ---
+  async deleteExpense(id) {
+    if(!confirm('Delete this entry?')) return;
+    try {
+      await db.collection("expenses").doc(id).delete();
+      GLOBAL_EXPENSES = GLOBAL_EXPENSES.filter(e => e.id !== id);
+      this.refreshUI();
+      toast('Entry Removed', 'success');
+    } catch(e) { toast('Error: '+e.message, 'error'); }
+  },
+
+  // --- GOALS ---
+  async deleteGoal(id) {
+    if(!confirm('Delete this goal?')) return;
+    try {
+      await db.collection("goals").doc(id).delete();
+      GLOBAL_GOALS = GLOBAL_GOALS.filter(g => g.id !== id);
+      this.refreshUI();
+      toast('Goal Removed', 'success');
+    } catch(e) { toast('Error: '+e.message, 'error'); }
+  },
+
+  refreshUI() {
+    renderDashboard(); renderOrders(); renderExpenses(); renderPending(); renderGoals();
+  }
+};
+
+function getOrders() { return GLOBAL_ORDERS; }
+function getExpenses() { return GLOBAL_EXPENSES; }
+function getGoals() { return GLOBAL_GOALS; }
+
+function startRealTimeSync() {
+  db.collection("orders").onSnapshot(snap => {
+    GLOBAL_ORDERS = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    DataManager.refreshUI();
+  });
+  db.collection("expenses").onSnapshot(snap => {
+    GLOBAL_EXPENSES = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    DataManager.refreshUI();
+  });
+  db.collection("goals").onSnapshot(snap => {
+    GLOBAL_GOALS = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    DataManager.refreshUI();
+  });
+}
+
+// Removed legacy syncFromCloud function as it is now live.
+
+// ══════════════════════════════════════════════════════════════
+// SYSTEM & THEME
+// ══════════════════════════════════════════════════════════════
+function initTheme() {
+  const saved = localStorage.getItem('aezoon_theme') || 'dark';
+  document.body.setAttribute('data-theme', saved);
+  updateThemeBtn(saved);
+}
+
+function toggleTheme() {
+  const current = document.body.getAttribute('data-theme') || 'dark';
+  const newTheme = current === 'dark' ? 'light' : 'dark';
+  document.body.setAttribute('data-theme', newTheme);
+  localStorage.setItem('aezoon_theme', newTheme);
+  updateThemeBtn(newTheme);
+  if(lineChart || doughnutChart) renderDashboard();
+}
+
+function updateThemeBtn(theme) {
+  const btn = document.getElementById('themeToggleBtn');
+  if(btn) btn.innerHTML = theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode';
+}
+
+// ══════════════════════════════════════════════════════════════
+// FIREBASE AUTHENTICATION (LOGIN / LOGOUT)
+// ══════════════════════════════════════════════════════════════
+auth.onAuthStateChanged(user => {
+  const lock = document.getElementById('lockScreen');
+  const app = document.getElementById('app');
+  
+  if (user) {
+    lock.style.display = 'none';
+    app.style.display = 'block';
+    startRealTimeSync();
+    startSettingsSync();
+    initApp();
+  } else {
+    lock.style.display = 'flex';
+    app.style.display = 'none';
+  }
+});
+
+function handleLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const err = document.getElementById('lockError');
+  err.style.display = 'none';
+
+  if (!email || !pass) {
+    err.textContent = "Please enter email and password.";
+    err.style.display = 'block';
+    return;
+  }
+
+  document.getElementById('loginBtn').textContent = "Logging in...";
+  
+  auth.signInWithEmailAndPassword(email, pass)
+    .then(() => {
+      document.getElementById('loginBtn').textContent = "Login to Dashboard";
+      // onAuthStateChanged will hide the login screen automatically
+    })
+    .catch(error => {
+      document.getElementById('loginBtn').textContent = "Login to Dashboard";
+      err.textContent = error.message;
+      err.style.display = 'block';
+    });
+}
+
+function handleLogout() {
+  if(!confirm("Are you sure you want to log out?")) return;
+  auth.signOut().then(() => {
+    toast('Logged out successfully', 'success');
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// NAVIGATION & INIT
+// ══════════════════════════════════════════════════════════════
+function nav(page) {
+  document.querySelectorAll('.page, .nav-item').forEach(e => e.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.getElementById('nav-' + page).classList.add('active');
+  
+  if (page === 'dashboard') renderDashboard();
+  if (page === 'orders') renderOrders();
+  if (page === 'expenses') renderExpenses();
+  if (page === 'pending') renderPending();
+  if (page === 'goals') renderGoals();
+  if (page === 'settings') renderSettings();
+}
+
+let lineChart = null, doughnutChart = null;
+
+function initApp() {
+  initTheme();
+  const d = new Date();
+  document.getElementById('dash-to').value = d.toISOString().split('T')[0];
+  d.setDate(d.getDate() - 30);
+  document.getElementById('dash-from').value = d.toISOString().split('T')[0];
+  renderDashboard();
+}
+
+// ══════════════════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════════════════
+function getFilteredOrders() {
+  const from = document.getElementById('dash-from').value;
+  const to = document.getElementById('dash-to').value;
+  return getOrders().filter(o => (!from || o.date >= from) && (!to || o.date <= to));
+}
+
+function resetDateFilter() {
+  document.getElementById('dash-from').value = '';
+  document.getElementById('dash-to').value = '';
+  renderDashboard();
+}
+
+function renderDashboard() {
+  const orders = getFilteredOrders();
+  const deliveredOrders = orders.filter(o => o.status === 'delivered');
+  const expenses = getExpenses();
+
+  const tRev = deliveredOrders.reduce((s, o) => s + (parseFloat(o.total) || 0), 0);
+  const tProf = deliveredOrders.reduce((s, o) => s + ((parseFloat(o.profit_per)||0) * (parseInt(o.qty)||1)), 0);
+  const tExp = expenses.filter(e => e.type === 'expense').reduce((s, e) => s + (parseFloat(e.amount)||0), 0);
+  const tInc = expenses.filter(e => e.type === 'profit').reduce((s, e) => s + (parseFloat(e.amount)||0), 0);
+  const nProf = tProf + tInc - tExp;
+
+  document.getElementById('dashStats').innerHTML = `
+    <div class="stat-card c1"><div class="stat-icon" style="color:var(--primary)">💰</div><div class="stat-label">Net Profit</div><div class="stat-val">AED ${fmt(nProf)}</div><div class="stat-sub">After expenses</div></div>
+    <div class="stat-card c2"><div class="stat-icon" style="color:var(--success)">📈</div><div class="stat-label">Revenue</div><div class="stat-val">AED ${fmt(tRev)}</div><div class="stat-sub">Completed orders</div></div>
+    <div class="stat-card c3"><div class="stat-icon" style="color:var(--warning)">🎯</div><div class="stat-label">Gross Profit</div><div class="stat-val">AED ${fmt(tProf)}</div><div class="stat-sub">From orders</div></div>
+    <div class="stat-card c4"><div class="stat-icon" style="color:var(--danger)">💸</div><div class="stat-label">Expenses</div><div class="stat-val">AED ${fmt(tExp)}</div><div class="stat-sub">Total spent</div></div>
+    <div class="stat-card c5"><div class="stat-icon" style="color:var(--info)">📦</div><div class="stat-label">Orders</div><div class="stat-val">${orders.length}</div><div class="stat-sub">${orders.filter(o=>!['delivered','cancel','fake','returned'].includes(o.status)).length} active</div></div>
+  `;
+
+  renderLineChart(orders);
+  renderDoughnut(orders);
+  renderRecentOrders(deliveredOrders);
+}
+
+function fmt(n) { return Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 }); }
+
+function renderLineChart(orders) {
+  const isLight = document.body.getAttribute('data-theme') === 'light';
+  const gridColor = isLight ? '#e2e8f0' : 'rgba(255,255,255,0.05)';
+  const textColor = isLight ? '#64748b' : '#94a3b8';
+
+  const months = {};
+  orders.forEach(o => {
+    if (!o.date) return;
+    const m = o.date.substring(0, 7);
+    if (!months[m]) months[m] = { rev: 0, profit: 0 };
+    if (o.status === 'delivered') {
+      months[m].rev += parseFloat(o.total) || 0;
+      months[m].profit += (parseFloat(o.profit_per)||0) * (parseInt(o.qty)||1);
+    }
+  });
+  const labels = Object.keys(months).sort().slice(-6);
+  const revData = labels.map(l => months[l]?.rev || 0);
+  const profData = labels.map(l => months[l]?.profit || 0);
+
+  if (lineChart) lineChart.destroy();
+  lineChart = new Chart(document.getElementById('chartLine').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets:[
+        { label: 'Revenue', data: revData, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', tension: 0.4, fill: true },
+        { label: 'Profit', data: profData, borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.1)', tension: 0.4, fill: true }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: textColor } } },
+      scales: {
+        x: { ticks: { color: textColor }, grid: { color: gridColor } },
+        y: { ticks: { color: textColor }, grid: { color: gridColor } }
+      }
+    }
+  });
+}
+
+function renderDoughnut(orders) {
+  const isLight = document.body.getAttribute('data-theme') === 'light';
+  const textColor = isLight ? '#64748b' : '#94a3b8';
+  const counts = { delivered:0, processing:0, shipped:0, unfulfilled:0, returned:0, cancel:0, fake:0 };
+  orders.forEach(o => { if(counts[o.status] !== undefined) counts[o.status]++; });
+
+  if (doughnutChart) doughnutChart.destroy();
+  doughnutChart = new Chart(document.getElementById('chartDoughnut').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels:['Delivered', 'Processing', 'Shipped', 'Unfulfilled', 'Returned', 'Cancelled', 'Fake'],
+      datasets:[{ data: Object.values(counts), backgroundColor:['#10b981','#f59e0b','#6366f1','#0ea5e9','#9333ea','#ef4444','#64748b'], borderWidth: 0 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '70%',
+      plugins: { legend: { position: 'bottom', labels: { color: textColor, padding: 15, font: { size: 12 } } } }
+    }
+  });
+}
+
+function renderRecentOrders(deliveredOrders) {
+  const tbody = document.getElementById('recentOrdersBody');
+  // Sort by date (descending) to show newest on top
+  const recent = [...deliveredOrders].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,6);
+  if (!recent.length) return tbody.innerHTML = '<tr><td colspan="6"><div class="empty">No completed orders yet</div></td></tr>';
+  
+  tbody.innerHTML = recent.map(o => `
+    <tr onclick="showOrderDetail('${o.id}')" style="cursor:pointer;">
+      <td><strong style="color:var(--text)">${o.customer_name}</strong></td>
+      <td>${o.product}</td>
+      <td style="color:var(--success); font-weight:600;">AED ${fmt(o.total)}</td>
+      <td style="color:var(--primary); font-weight:600;">AED ${fmt((o.profit_per||0)*(o.qty||1))}</td>
+      <td style="color:var(--muted)">${o.date}</td>
+      <td>${badge(o.status)}</td>
+    </tr>
+  `).join('');
+}
+
+// ══════════════════════════════════════════════════════════════
+// ORDERS MODULE (Hybrid Save)
+// ══════════════════════════════════════════════════════════════
+function openOrderModal(id) {
+  if (id) {
+    const o = getOrders().find(x => x.id === id);
+    if (!o) return;
+    ['name','addr','city','phone','email','shiptype','shipfee','prod','price','profit','qty','status','date','notes'].forEach(k => {
+      const el = document.getElementById('o_'+k);
+      if(el) {
+        if(k==='name') el.value = o.customer_name || '';
+        else if(k==='shiptype') el.value = o.ship_type || 'free';
+        else if(k==='shipfee') el.value = o.ship_fee || 0;
+        else if(k==='profit') el.value = o.profit_per || 0;
+        else if(k==='prod') el.value = o.product || '';
+        else el.value = o[k] || '';
+      }
+    });
+    document.getElementById('o_id_custom').value = o.custom_id || '#';
+    document.getElementById('o_age').value = o.age || '';
+    document.getElementById('o_gender').value = o.gender || '';
+    toggleShipFee();
+    document.getElementById('orderModal').dataset.editId = id;
+  } else {
+    ['name','addr','phone','email','shipfee','prod','price','profit','notes'].forEach(k => {
+      if(document.getElementById('o_'+k)) document.getElementById('o_'+k).value = '';
+    });
+    document.getElementById('o_city').value = '';
+    document.getElementById('o_age').value = '';
+    document.getElementById('o_gender').value = '';
+    // Auto order number: find highest existing number and +1
+    const allOrders = getOrders();
+    let nextNum = 1001;
+    if (allOrders.length) {
+      const nums = allOrders.map(o => {
+        const m = (o.custom_id || '').replace('#','').trim();
+        return parseInt(m) || 0;
+      }).filter(n => n > 0);
+      if (nums.length) nextNum = Math.max(...nums) + 1;
+    }
+    document.getElementById('o_id_custom').value = '#' + nextNum;
+    document.getElementById('o_qty').value = 1;
+    document.getElementById('o_shiptype').value = 'free';
+    document.getElementById('o_status').value = 'unfulfilled';
+    document.getElementById('o_shipfee_row').style.display = 'none';
+    document.getElementById('o_date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('orderModal').dataset.editId = '';
+  }
+  document.getElementById('orderModal').classList.add('open');
+}
+
+function toggleShipFee() {
+  document.getElementById('o_shipfee_row').style.display = document.getElementById('o_shiptype').value === 'custom' ? 'flex' : 'none';
+  calcTotal();
+}
+
+function calcTotal() {
+  const p = parseFloat(document.getElementById('o_price').value)||0;
+  const q = parseInt(document.getElementById('o_qty').value)||1;
+  const s = document.getElementById('o_shiptype').value === 'custom' ? (parseFloat(document.getElementById('o_shipfee').value)||0) : 0;
+  document.getElementById('o_total').value = (p*q)+s || '';
+}
+
+function saveOrder() {
+  const n = document.getElementById('o_name').value.trim();
+  const p = document.getElementById('o_prod').value.trim();
+  const pr = document.getElementById('o_price').value;
+  const pf = document.getElementById('o_profit').value;
+  const customId = document.getElementById('o_id_custom').value.trim();
+  if (!n || !p || !pr || !pf) return toast('Fill required fields (*)', 'error');
+
+  const editId = document.getElementById('orderModal').dataset.editId;
+  const orders = getOrders();
+  
+  const orderData = {
+    id: editId || 'o_' + Date.now(),
+    custom_id: customId === '#' ? '' : customId,
+    customer_name: n, 
+    address: document.getElementById('o_addr').value.trim(),
+    city: document.getElementById('o_city').value.trim(), 
+    phone: document.getElementById('o_phone').value.trim(),
+    email: document.getElementById('o_email').value.trim(),
+    age: document.getElementById('o_age').value ? parseInt(document.getElementById('o_age').value) : '',
+    gender: document.getElementById('o_gender').value,
+    ship_type: document.getElementById('o_shiptype').value,
+    ship_fee: parseFloat(document.getElementById('o_shipfee').value)||0, 
+    product: p,
+    price: parseFloat(pr), 
+    profit_per: parseFloat(pf), 
+    qty: parseInt(document.getElementById('o_qty').value)||1,
+    total: parseFloat(document.getElementById('o_total').value), 
+    status: document.getElementById('o_status').value,
+    date: document.getElementById('o_date').value || new Date().toISOString().split('T')[0],
+    notes: document.getElementById('o_notes').value.trim(), 
+    created_at: editId ? (orders.find(x=>x.id===editId)?.created_at||Date.now()) : Date.now(),
+  };
+
+  db.collection("orders").doc(orderData.id).set(orderData)
+    .then(() => {
+      closeModal('orderModal'); 
+      toast(editId?'Order Updated!':'Order Added!', 'success');
+      DataManager.refreshUI();
+    })
+    .catch(err => {
+      console.error("Cloud Error:", err);
+      toast('Cloud Save Failed!', 'error');
+    });
+}
+
+function renderOrders() {
+  const s = (document.getElementById('orderSearch')?.value||'').toLowerCase();
+  const f = document.getElementById('orderFilter')?.value||'';
+  const orders = getOrders().filter(o => 
+    (!s || o.customer_name.toLowerCase().includes(s) || o.product.toLowerCase().includes(s)) &&
+    (!f || o.status === f)
+  ).sort((a,b) => b.created_at - a.created_at);
+
+  const tbody = document.getElementById('ordersBody');
+  if(!tbody) return;
+  if(!orders.length) return tbody.innerHTML = '<tr><td colspan="9"><div class="empty">No orders found</div></td></tr>';
+
+  tbody.innerHTML = orders.map((o,i) => `
+    <tr>
+      <td style="color:var(--muted)">${o.custom_id || '#'+(i+1)}</td>
+      <td><strong style="color:var(--text)">${o.customer_name}</strong></td>
+      <td>${o.city||'—'}</td>
+      <td>${o.product} <span style="color:var(--muted)">x${o.qty}</span></td>
+      <td style="color:var(--success); font-weight:600;">AED ${fmt(o.total)}</td>
+      <td style="color:var(--primary); font-weight:600;">AED ${fmt((o.profit_per||0)*(o.qty||1))}</td>
+      <td>${badge(o.status)}</td>
+      <td style="color:var(--muted)">${o.date}</td>
+      <td>
+        <div style="display:flex;gap:0.4rem">
+          <button class="btn btn-outline btn-sm" onclick="showOrderDetail('${o.id}')">👁</button>
+          <button class="btn btn-outline btn-sm" onclick="openOrderModal('${o.id}')">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="DataManager.deleteOrder('${o.id}')">🗑</button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+function updStatus(id) {
+  const newStatus = document.getElementById('detail_status_'+id).value;
+  DataManager.updateOrderStatus(id, newStatus);
+  closeModal('orderDetailModal');
+}
+
+// ══════════════════════════════════════════════════════════════
+// EXPENSES (Hybrid Save)
+// ══════════════════════════════════════════════════════════════
+function toggleTax() {
+  const row = document.getElementById('taxRow');
+  const arrow = document.getElementById('taxArrow');
+  if (row.style.display === 'none') { row.style.display = 'flex'; arrow.textContent = '▼'; } 
+  else { row.style.display = 'none'; arrow.textContent = '▶'; document.getElementById('e_tax').value = ''; }
+}
+
+function openExpModal() {
+  document.getElementById('e_title').value=''; 
+  document.getElementById('e_amount').value='';
+  document.getElementById('e_tax').value='';
+  document.getElementById('taxRow').style.display='none';
+  document.getElementById('taxArrow').textContent='▶';
+  document.getElementById('e_notes').value=''; 
+  document.getElementById('e_type').value='expense';
+  document.getElementById('e_date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('expModal').classList.add('open');
+}
+
+function saveExpense() {
+  const t = document.getElementById('e_title').value.trim();
+  const a = document.getElementById('e_amount').value;
+  const tax = document.getElementById('e_tax').value;
+  if(!t||!a) return toast('Fill required fields','error');
+  
+  const finalAmount = parseFloat(a) + (parseFloat(tax) || 0);
+  const expData = { id:'e_'+Date.now(), title:t, type:document.getElementById('e_type').value, amount: finalAmount, tax: parseFloat(tax) || 0, date:document.getElementById('e_date').value||new Date().toISOString().split('T')[0], notes:document.getElementById('e_notes').value, created_at:Date.now() };
+  
+  const exps = getExpenses();
+  exps.push(expData);
+  db.collection("expenses").doc(expData.id).set(expData);
+
+  closeModal('expModal'); toast('Added!','success');
+}
+
+function renderExpenses() {
+  const exps = getExpenses().sort((a,b)=>b.created_at-a.created_at);
+  const te = exps.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  const ti = exps.filter(e=>e.type==='profit').reduce((s,e)=>s+e.amount,0);
+
+  document.getElementById('expStats').innerHTML = `
+    <div class="stat-card c4"><div class="stat-icon" style="color:var(--danger)">📉</div><div class="stat-label">Total Expenses</div><div class="stat-val">AED ${fmt(te)}</div></div>
+    <div class="stat-card c2"><div class="stat-icon" style="color:var(--success)">📈</div><div class="stat-label">Other Income</div><div class="stat-val">AED ${fmt(ti)}</div></div>
+    <div class="stat-card c1"><div class="stat-icon" style="color:var(--primary)">📊</div><div class="stat-label">Net</div><div class="stat-val">AED ${fmt(ti-te)}</div></div>
+  `;
+  const list = document.getElementById('expList');
+  if(!exps.length) return list.innerHTML = '<div class="empty">No entries yet</div>';
+  list.innerHTML = exps.map(e=>`
+    <div class="exp-item">
+      <div class="exp-icon ${e.type}">${e.type==='expense'?'💸':'💰'}</div>
+      <div class="exp-info">
+        <div class="exp-title" style="color:var(--text)">${e.title}</div>
+        <div class="exp-date">
+          ${e.date} 
+          ${e.tax > 0 ? `<span style="color:var(--warning); font-weight:500;"> · Includes AED ${fmt(e.tax)} Tax</span>` : ''} 
+          ${e.notes?' · '+e.notes:''}
+        </div>
+      </div>
+      <div class="exp-amount ${e.type}">${e.type==='expense'?'−':'+'} AED ${fmt(e.amount)}</div>
+      <button class="btn btn-outline btn-sm" onclick="DataManager.deleteExpense('${e.id}')">🗑</button>
+    </div>
+  `).join('');
+}
+
+function deleteExpense(id) {
+    if(!confirm('Delete this entry?')) return;
+    GLOBAL_EXPENSES = getExpenses().filter(x=>x.id!==id);
+    localStorage.setItem(KEYS.expenses, JSON.stringify(GLOBAL_EXPENSES));
+    db.collection("expenses").doc(id).delete().catch(e=>console.log(e));
+    renderExpenses(); renderDashboard(); toast('Deleted from Cloud','success');
+}
+
+// ══════════════════════════════════════════════════════════════
+// PENDING & GOALS
+// ══════════════════════════════════════════════════════════════
+function renderPending() {
+  const ords = getOrders().filter(o=>!['delivered','cancel','fake','returned'].includes(o.status)).sort((a,b)=>b.created_at-a.created_at);
+  const grid = document.getElementById('pendingGrid');
+  if(!ords.length) return grid.innerHTML = '<div class="empty" style="grid-column:1/-1">No active orders — all clear!</div>';
+  
+  grid.innerHTML = ords.map(o=>`
+    <div class="pending-card" onclick="showOrderDetail('${o.id}')">
+      <div class="pending-card-top">
+        <div><div class="pending-name" style="color:var(--text)">${o.customer_name}</div><div class="pending-meta">${o.product} · x${o.qty}</div></div>
+        <div>${badge(o.status)}</div>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
+        <span style="color:var(--text)">Total: <strong style="color:var(--success)">AED ${fmt(o.total)}</strong></span>
+        <span style="color:var(--muted)">${o.date}</span>
+      </div>
+      <div class="pending-actions" onclick="event.stopPropagation()">
+        <select class="inp" id="ps_${o.id}" style="flex:1; padding:0.35rem 0.6rem; font-size:0.85rem">
+          <option value="unfulfilled" ${o.status==='unfulfilled'?'selected':''}>Unfulfilled</option>
+          <option value="processing" ${o.status==='processing'?'selected':''}>Processing</option>
+          <option value="shipped" ${o.status==='shipped'?'selected':''}>Shipped</option>
+          <option value="delivered">Delivered</option>
+          <option value="returned">Returned</option>
+          <option value="cancel">Cancel</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="DataManager.updateOrderStatus('${o.id}', document.getElementById('ps_${o.id}').value)">Update</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openGoalModal() {
+  document.getElementById('g_name').value=''; document.getElementById('g_target').value='';
+  document.getElementById('g_from').value=new Date().toISOString().split('T')[0]; document.getElementById('g_to').value='';
+  document.getElementById('goalModal').classList.add('open');
+}
+
+function saveGoal() {
+  const n=document.getElementById('g_name').value.trim(), t=document.getElementById('g_target').value, f=document.getElementById('g_from').value, to=document.getElementById('g_to').value;
+  if(!n||!t||!f||!to) return toast('Fill all fields','error');
+  
+  const goalData = {id:'g_'+Date.now(), name:n, target:parseFloat(t), from:f, to:to, created_at:Date.now()};
+  const gls = getGoals();
+  gls.push(goalData);
+  localStorage.setItem(KEYS.goals, JSON.stringify(gls));
+  db.collection("goals").doc(goalData.id).set(goalData);
+  
+  closeModal('goalModal'); renderGoals(); toast('Goal added!','success');
+}
+
+function renderGoals() {
+  const gls = getGoals().sort((a,b)=>b.created_at-a.created_at); const ords = getOrders();
+  const grid = document.getElementById('goalsGrid');
+  if(!gls.length) return grid.innerHTML = '<div class="empty" style="grid-column:1/-1">No goals set yet.</div>';
+  
+  grid.innerHTML = gls.map(g => {
+    const cur = ords.filter(o=>o.status==='delivered'&&o.date>=g.from&&o.date<=g.to).reduce((s,o)=>s+(o.profit_per||0)*(o.qty||1),0);
+    const pct = Math.min(100, Math.round((cur/g.target)*100)) || 0;
+    const clr = pct>=100?'var(--success)':pct>=50?'var(--primary)':'var(--warning)';
+    return `
+      <div class="goal-card">
+        <div class="goal-name" style="color:var(--text)">${g.name}</div>
+        <div class="goal-range">📅 ${g.from} to ${g.to}</div>
+        <div class="goal-amounts"><span style="color:var(--text)">Achieved: <strong style="color:${clr}">AED ${fmt(cur)}</strong></span><span style="color:var(--text)">Target: <strong>AED ${fmt(g.target)}</strong></span></div>
+        <div class="goal-bar-bg"><div class="goal-bar-fill" style="width:${pct}%;background:${clr}"></div></div>
+        <div class="goal-pct">${pct}% Completed</div>
+        <button class="btn btn-outline btn-sm" style="margin-top:1.2rem; width:100%" onclick="DataManager.deleteGoal('${g.id}')">🗑 Remove Goal</button>
+      </div>`;
+  }).join('');
+}
+
+function deleteGoal(id) {
+    if(!confirm('Delete this goal?')) return;
+    GLOBAL_GOALS = getGoals().filter(x=>x.id!==id);
+    localStorage.setItem(KEYS.goals, JSON.stringify(GLOBAL_GOALS));
+    db.collection("goals").doc(id).delete().catch(e=>console.log(e));
+    renderGoals(); renderDashboard(); toast('Goal Removed','success');
+}
+
+// ══════════════════════════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════════════════════════
+function changePassword() {
+  const np = document.getElementById('sNewPass').value;
+  const cp = document.getElementById('sConfPass').value;
+  
+  if(!np || np.length < 6) return toast('Password must be 6+ characters!', 'error');
+  if(np !== cp) return toast('Passwords do not match!', 'error');
+
+  const user = auth.currentUser;
+  if(user) {
+    user.updatePassword(np).then(() => {
+      toast('Firebase Password updated successfully!', 'success');
+      document.getElementById('sNewPass').value = '';
+      document.getElementById('sConfPass').value = '';
+    }).catch(error => {
+      toast(error.message, 'error'); 
+    });
+  } else {
+    toast('You must be logged in to change password.', 'error');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// 3. AI CONFIG & REAL-TIME LISTENERS
+// ══════════════════════════════════════════════════════════════
+let AI_CONFIG = {};
+
+function startSettingsSync() {
+  db.collection("settings").doc("ai_config").onSnapshot(doc => {
+    if(doc.exists) {
+      AI_CONFIG = doc.data();
+      applyAiConfigToUI();
+    }
+  });
+}
+
+function applyAiConfigToUI() {
+  const gK = document.getElementById('sGeminiKey');
+  const dK = document.getElementById('sDeepSeekKey');
+  const sM = document.getElementById('sAiModel');
+
+  if(gK && document.activeElement !== gK) gK.value = AI_CONFIG.gemini_key || '';
+  if(dK && document.activeElement !== dK) dK.value = AI_CONFIG.deepseek_key || '';
+  if(sM) sM.value = AI_CONFIG.model || 'gemini';
+}
+
+function renderSettings() {
+  document.getElementById('storageInfo').innerHTML = `<strong>Local count:</strong> ${getOrders().length} Orders | ${getExpenses().length} Entries | ${getGoals().length} Goals`;
+  applyAiConfigToUI();
+}
+
+
+function saveAiConfig() {
+  const config = {
+    model: document.getElementById('sAiModel').value,
+    gemini_key: document.getElementById('sGeminiKey').value.trim(),
+    deepseek_key: document.getElementById('sDeepSeekKey').value.trim()
+  };
+  db.collection("settings").doc("ai_config").set(config)
+    .then(() => toast('AI Config saved to Cloud!','success'))
+    .catch(e => toast('Cloud Save Error','error'));
+}
+
+function confirmCloudDelete() {
+  const type = document.getElementById('cloudDelType').value;
+  if(!confirm(`⚠️ ARE YOU SURE? This will permanently delete ALL ${type.toUpperCase()} from CLOUD (Firebase)?`)) return;
+  if(!confirm(`FINAL CHECK: Type "DELETE" to confirm cloud deletion of ${type}`)) return;
+  
+  toast(`Deleting ${type} from Cloud...`, 'warning');
+  db.collection(type).get().then(res => {
+    const batch = db.batch();
+    res.forEach(doc => batch.delete(doc.ref));
+    return batch.commit();
+  }).then(() => {
+    toast(`Cloud ${type} cleared!`, 'success');
+    renderSettings();
+  }).catch(e => toast('Delete Failed', 'error'));
+}
+
+function confirmClearLocalData() {
+  if(!confirm('Clear all LOCAL data? This will not affect Cloud.')) return;
+  localStorage.setItem(KEYS.orders, '[]');
+  localStorage.setItem(KEYS.expenses, '[]');
+  localStorage.setItem(KEYS.goals, '[]');
+  toast('Local data cleared.', 'success');
+  renderDashboard(); renderOrders(); renderExpenses(); renderPending(); renderGoals(); renderSettings();
+}
+
+function exportBackup() {
+  const b = new Blob([JSON.stringify({ v:'2.1_Cloud', date:new Date().toISOString(), orders:getOrders(), expenses:getExpenses(), goals:getGoals() }, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `Aezoon_Backup_${new Date().toISOString().split('T')[0]}.json`; a.click(); toast('Exported!','success');
+}
+
+function importBackup(e) {
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    try {
+      const d = JSON.parse(ev.target.result);
+      if(d.orders) localStorage.setItem(KEYS.orders, JSON.stringify(d.orders)); 
+      if(d.expenses) localStorage.setItem(KEYS.expenses, JSON.stringify(d.expenses)); 
+      if(d.goals) localStorage.setItem(KEYS.goals, JSON.stringify(d.goals));
+      
+      toast('Imported locally! Click Cloud Sync to push to Firebase.', 'success'); 
+      renderSettings(); renderDashboard();
+    } catch(err) { toast('Invalid file!','error'); }
+  }; r.readAsText(f);
+}
+
+function confirmClearData() {
+  if(!confirm('⚠️ ARE YOU ABSOLUTELY SURE? This will wipe LOCAL and CLOUD data!')) return;
+  
+  // Clear Local
+  localStorage.setItem(KEYS.orders, JSON.stringify([])); 
+  localStorage.setItem(KEYS.expenses, JSON.stringify([])); 
+  localStorage.setItem(KEYS.goals, JSON.stringify([])); 
+  
+  // Clear Cloud
+  db.collection("orders").get().then(res => res.forEach(d => d.ref.delete()));
+  db.collection("expenses").get().then(res => res.forEach(d => d.ref.delete()));
+  db.collection("goals").get().then(res => res.forEach(d => d.ref.delete()));
+
+  toast('All Data Cleared.', 'success'); 
+  renderDashboard(); renderOrders(); renderExpenses(); renderPending(); renderGoals(); renderSettings();
+}
+
+// ══════════════════════════════════════════════════════════════
+// UTILITIES
+// ══════════════════════════════════════════════════════════════
+function badge(s) {
+  const map = { 
+    delivered:['badge-delivered','✅ Delivered'], 
+    processing:['badge-processing','⏳ Processing'], 
+    shipped:['badge-shipped','🚚 Shipped'], 
+    unfulfilled:['badge-unfulfilled','📦 Unfulfilled'], 
+    returned:['badge-returned','↩️ Returned'], 
+    cancel:['badge-cancel','❌ Cancelled'], 
+    fake:['badge-fake','🚫 Fake'] 
+  };
+  const[c, l] = map[s] ||['badge-processing', s]; 
+  return `<span class="badge ${c}">${l}</span>`;
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-bg').forEach(bg => { bg.addEventListener('click', e => { if(e.target===bg) bg.classList.remove('open'); }); });
+function toast(msg, type='success') {
+  const el = document.getElementById('toast');
+  el.innerHTML = `${type==='success'?'✅': type==='warning'?'⚠️':'❌'} <span>${msg}</span>`; 
+  el.className = 'show '+type;
+  clearTimeout(el._t); 
+  el._t = setTimeout(() => el.className='', 3000);
+}
+
+// Auto-prefix Order ID
+document.getElementById('o_id_custom').addEventListener('input', function(e) {
+  if (!this.value.startsWith('#')) {
+    this.value = '#' + this.value.replace(/#/g, '');
+  }
+});
+
+// ── Stub functions — delegate to working.js after load ──
+// These exist so inline onchange/onclick in HTML don't throw ReferenceError
+function renderCustomers() { /* overridden by working.js */ }
+function openCustomerModal(id) { /* overridden by working.js */ }
+function saveCustomer() { /* overridden by working.js */ }
+function deleteCustomer(id) { /* overridden by working.js */ }
+function showCustomerDetail(id) { /* overridden by working.js */ }
+function renderGoals() { /* overridden by working.js */ }
+function saveGoal() { /* overridden by working.js */ }
+function openGoalModal() { /* overridden by working.js */ }
+function previewGoal() { /* overridden by working.js */ }
+function renderSettings() { /* overridden by working.js */ }
+function openAiGoalModal() { /* overridden by working.js */ }
+function saveAiGoal() { /* overridden by working.js */ }
+function aiGoalPreview() { /* overridden by working.js */ }
+function renderAiGoals() { /* overridden by working.js */ }
+function showOrderDetail(id) { /* overridden by working.js */ }
+function exportBackup() { /* overridden by working.js */ }
+function importBackup(e) { /* overridden by working.js */ }
+function confirmClearLocalData() { /* overridden by working.js */ }
+function confirmClearData() { /* overridden by working.js */ }
+</script>
+
+<!-- working.js: Fixes KEYS, saveGoal, renderSettings, showOrderDetail & legacy functions -->
+<script src="working.js"></script>
+</body>
+</html>
