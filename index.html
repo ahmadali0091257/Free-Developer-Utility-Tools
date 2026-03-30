@@ -1194,6 +1194,7 @@ function openOrderModal(id) {
         else if(k==='shipfee') el.value = o.ship_fee || 0;
         else if(k==='profit') el.value = o.profit_per || 0;
         else if(k==='prod') el.value = o.product || '';
+        else if(k==='addr') el.value = o.address || '';
         else el.value = o[k] || '';
       }
     });
