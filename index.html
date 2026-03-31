@@ -349,6 +349,10 @@ tr:last-child td { border-bottom:none; }
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     <span>Customers</span>
   </div>
+  <div class="nav-item" onclick="nav('tasks')" id="nav-tasks">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    <span>Tasks</span>
+  </div>
   <div class="nav-item" onclick="nav('aiteam')" id="nav-aiteam">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 5a3 3 0 1 1-3 3 3 3 0 0 1 3-3zm0 13a8 8 0 0 1-6.2-3c.1-2 4-3.1 6.2-3.1s6.1 1.1 6.2 3.1A8 8 0 0 1 12 20z"/></svg>
     <span>AI Team</span>
@@ -519,6 +523,41 @@ tr:last-child td { border-bottom:none; }
           <tbody id="custBody"></tbody>
         </table>
       </div>
+    </div>
+  </div>
+
+  <!-- TASKS PAGE -->
+  <div class="page" id="page-tasks">
+    <div class="page-header">
+      <div>
+        <div class="page-title">✅ Tasks & Assignments</div>
+        <div class="page-sub">Assign and track tasks for Ahmad & Ali</div>
+      </div>
+      <button class="btn btn-primary" onclick="openTaskModal()">+ Add Task</button>
+    </div>
+
+    <!-- Person Selector (Top-Middle) -->
+    <div style="display:flex; align-items:center; justify-content:center; gap:1rem; margin-bottom:2rem;">
+      <label style="font-size:0.85rem; font-weight:600; color:var(--muted); text-transform:uppercase;">Select Person:</label>
+      <button class="btn btn-outline task-person-selector" id="selectorAhmad" onclick="selectTaskPerson('Ahmad')" style="border-width:2px; border-color:var(--primary); color:var(--primary);">
+        <span style="margin-right:0.4rem;">👤</span> Ahmad
+      </button>
+      <button class="btn btn-outline task-person-selector" id="selectorAli" onclick="selectTaskPerson('Ali')">
+        <span style="margin-right:0.4rem;">👤</span> Ali
+      </button>
+    </div>
+
+    <!-- Statistics -->
+    <div class="task-stats-grid" id="taskStatsGrid"></div>
+
+    <!-- Tasks Grid -->
+    <div class="task-grid" id="taskGrid"></div>
+
+    <!-- Empty State -->
+    <div class="task-empty" id="taskEmptyState" style="display:none;">
+      <div class="task-empty-icon">📋</div>
+      <div class="task-empty-text">No tasks yet</div>
+      <div class="task-empty-sub">Click "Add Task" to create one</div>
     </div>
   </div>
 
@@ -841,6 +880,73 @@ tr:last-child td { border-bottom:none; }
   </div>
 </div>
 
+<!-- ADD/EDIT TASK MODAL -->
+<div class="modal-bg" id="taskModal">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-header">
+      <h3>📋 Add New Task</h3>
+      <button class="modal-close" onclick="closeModal('taskModal')">✕</button>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:1.2rem;">
+      <div class="form-row">
+        <label>Assign to: *</label>
+        <select class="inp" id="t_person">
+          <option value="">— Select Person —</option>
+          <option value="Ahmad">Ahmad</option>
+          <option value="Ali">Ali</option>
+        </select>
+      </div>
+      
+      <div class="form-row">
+        <label>Task Title *</label>
+        <input class="inp" id="t_title" placeholder="e.g. Follow up with customers phone">
+      </div>
+
+      <div class="form-row">
+        <label>Description (Optional)</label>
+        <textarea class="inp" id="t_desc" rows="3" placeholder="Task details..."></textarea>
+      </div>
+
+      <div class="form-row">
+        <label>Task Steps *</label>
+        <p style="font-size:0.8rem; color:var(--muted); margin-bottom:0.6rem;">Add numbered steps or action items</p>
+        <div id="t_steps_container" style="display:flex; flex-direction:column; gap:0.6rem; margin-bottom:0.8rem;"></div>
+        <button class="btn btn-outline" style="width:fit-content;" onclick="addTaskStep()">+ Add Step</button>
+      </div>
+
+      <div class="form-row">
+        <label>Status</label>
+        <select class="inp" id="t_status">
+          <option value="pending">Pending</option>
+          <option value="in-progress">In Progress</option>
+          <option value="completed">Completed</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <label>Due Date (Optional)</label>
+        <input class="inp" id="t_duedate" type="date">
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-outline" onclick="closeModal('taskModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTask()">Save Task</button>
+    </div>
+  </div>
+</div>
+
+<!-- TASK DETAIL MODAL -->
+<div class="modal-bg" id="taskDetailModal">
+  <div class="modal" style="max-width:650px;">
+    <div class="modal-header">
+      <h3>📋 Task Details</h3>
+      <button class="modal-close" onclick="closeModal('taskDetailModal')">✕</button>
+    </div>
+    <div id="taskDetailContent"></div>
+  </div>
+</div>
+
 <!-- AI TEAM SETTINGS OVERLAY -->
 <div class="ai-settings-overlay" id="aiSettingsOverlay">
   <div class="ai-settings-panel">
@@ -858,6 +964,7 @@ tr:last-child td { border-bottom:none; }
 <!-- Script dependencies -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link rel="stylesheet" href="ai.css">
+<link rel="stylesheet" href="tasks.css">
 
 <script>
 // Configure Chart JS Font
@@ -989,6 +1096,8 @@ auth.onAuthStateChanged(user => {
     app.style.display = 'block';
     startRealTimeSync();
     startSettingsSync();
+    startCustomerSync();
+    startTasksSync();
     initApp();
   } else {
     lock.style.display = 'flex';
@@ -1043,6 +1152,7 @@ function nav(page) {
   if (page === 'pending') renderPending();
   if (page === 'goals') renderGoals();
   if (page === 'customers') renderCustomers();
+  if (page === 'tasks') { selectTaskPerson('Ahmad'); renderTasks(); }
   if (page === 'aiteam') { if(typeof initAiTeam==='function') initAiTeam(); }
   if (page === 'settings') renderSettings();
 }
