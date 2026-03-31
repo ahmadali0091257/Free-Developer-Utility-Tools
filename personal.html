@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Personal Dashboard</title>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:#0f172a; --surface:#1e293b; --surface2:#334155; --surface3:#475569;
+  --border:#334155; --text:#f8fafc; --muted:#94a3b8;
+  --primary:#8b5cf6; --primary-hover:#7c3aed; --primary-light:rgba(139,92,246,0.15);
+  --success:#10b981; --success-light:rgba(16,185,129,0.15);
+  --warning:#f59e0b; --warning-light:rgba(245,158,11,0.15);
+  --danger:#ef4444; --danger-light:rgba(239,68,68,0.15);
+  --info:#0ea5e9; --info-light:rgba(14,165,233,0.15);
+  --radius:12px; --radius-sm:6px;
+  --shadow:0 4px 6px -1px rgba(0,0,0,0.3);
+  --shadow-sm:0 2px 4px -1px rgba(0,0,0,0.2);
+}
+[data-theme="light"] {
+  --bg:#f8fafc; --surface:#fff; --surface2:#f1f5f9; --surface3:#e2e8f0;
+  --border:#e2e8f0; --text:#0f172a; --muted:#64748b; --primary:#7c3aed;
+  --shadow:0 4px 6px -1px rgba(0,0,0,0.05);
+}
+*{margin:0;padding:0;box-sizing:border-box;transition:background-color 0.3s,border-color 0.3s;}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
+h1,h2,h3,h4{font-weight:600;color:var(--text);}
+
+/* LOCK */
+#lockScreen{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1.5rem;}
+.lock-logo{font-size:2rem;font-weight:700;color:var(--primary);}
+.lock-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2rem;width:100%;max-width:360px;display:flex;flex-direction:column;gap:1rem;box-shadow:var(--shadow);}
+.lock-error{color:var(--danger);font-size:0.85rem;text-align:center;display:none;background:var(--danger-light);padding:0.5rem;border-radius:var(--radius-sm);}
+
+/* LAYOUT */
+#app{display:none;}
+.shell{display:flex;min-height:100vh;}
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:1.2rem 1rem;gap:0.4rem;position:fixed;top:0;left:0;height:100vh;z-index:100;}
+.sidebar-logo{font-size:1.3rem;font-weight:700;color:var(--primary);padding:0.5rem 1rem 1.2rem;}
+.sidebar-logo span{font-size:0.75rem;color:var(--muted);display:block;font-weight:400;margin-top:0.1rem;}
+.nav-item{display:flex;align-items:center;gap:0.7rem;padding:0.65rem 1rem;border-radius:var(--radius-sm);color:var(--muted);cursor:pointer;font-size:0.9rem;font-weight:500;transition:all 0.2s;border:1px solid transparent;user-select:none;}
+.nav-item:hover{background:var(--surface2);color:var(--text);}
+.nav-item.active{background:var(--primary-light);border-color:var(--primary);color:var(--primary);font-weight:600;}
+.nav-item svg{width:17px;height:17px;flex-shrink:0;}
+.sidebar-bottom{margin-top:auto;display:flex;flex-direction:column;gap:0.5rem;}
+.sidebar-ver{font-size:0.72rem;color:var(--muted);padding:0.5rem 1rem;text-align:center;}
+.main{margin-left:220px;padding:1.5rem 2rem;min-height:100vh;flex:1;}
+.page{display:none;animation:fadeIn 0.2s ease;}
+.page.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.8rem;gap:1rem;flex-wrap:wrap;}
+.page-title{font-size:1.4rem;font-weight:700;}
+.page-sub{color:var(--muted);font-size:0.85rem;margin-top:0.2rem;}
+
+/* INPUTS & BUTTONS */
+label{font-size:0.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.03em;}
+.inp{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:0.65rem 0.8rem;color:var(--text);font-family:inherit;font-size:0.9rem;outline:none;width:100%;}
+.inp:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-light);}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:0.4rem;border:none;border-radius:var(--radius-sm);padding:0.65rem 1rem;font-family:inherit;font-size:0.9rem;font-weight:500;cursor:pointer;transition:all 0.2s;}
+.btn:hover{transform:translateY(-1px);}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-primary:hover{background:var(--primary-hover);}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text);}
+.btn-outline:hover{border-color:var(--primary);color:var(--primary);}
+.btn-danger{background:var(--danger-light);color:var(--danger);border:1px solid transparent;}
+.btn-danger:hover{border-color:var(--danger);}
+.btn-sm{padding:0.35rem 0.65rem;font-size:0.78rem;}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;box-shadow:var(--shadow-sm);}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1.2rem;margin-bottom:1.8rem;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;position:relative;overflow:hidden;box-shadow:var(--shadow-sm);}
+.stat-card.c1{border-left:4px solid var(--primary);}
+.stat-card.c2{border-left:4px solid var(--success);}
+.stat-card.c3{border-left:4px solid var(--warning);}
+.stat-card.c4{border-left:4px solid var(--danger);}
+.stat-label{font-size:0.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.4rem;}
+.stat-val{font-size:1.35rem;font-weight:700;color:var(--text);}
+.stat-sub{font-size:0.72rem;color:var(--muted);margin-top:0.3rem;}
+.stat-icon{position:absolute;top:1rem;right:1rem;font-size:1.1rem;background:var(--surface2);border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;}
+
+/* EXPENSE LIST */
+.exp-list{display:flex;flex-direction:column;gap:0.8rem;margin-top:1rem;}
+.exp-item{display:flex;align-items:center;gap:1rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:0.9rem 1rem;box-shadow:var(--shadow-sm);}
+.exp-icon{width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
+.exp-icon.expense{background:var(--danger-light);color:var(--danger);}
+.exp-icon.profit{background:var(--success-light);color:var(--success);}
+.exp-info{flex:1;}
+.exp-title{font-weight:600;font-size:0.9rem;}
+.exp-date{font-size:0.78rem;color:var(--muted);margin-top:0.1rem;}
+.exp-amount{font-weight:700;font-size:0.95rem;margin-right:0.8rem;}
+.exp-amount.expense{color:var(--danger);}
+.exp-amount.profit{color:var(--success);}
+
+/* VAULT — Passwords */
+.vault-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.2rem;}
+.vault-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;box-shadow:var(--shadow-sm);position:relative;}
+.vault-card:hover{border-color:var(--primary);}
+.vault-provider{font-size:1rem;font-weight:700;color:var(--text);margin-bottom:0.3rem;}
+.vault-email{font-size:0.82rem;color:var(--primary);margin-bottom:0.8rem;}
+.vault-field{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border-radius:var(--radius-sm);padding:0.5rem 0.7rem;margin-bottom:0.4rem;font-size:0.82rem;}
+.vault-field-label{color:var(--muted);font-size:0.7rem;font-weight:600;text-transform:uppercase;}
+.vault-field-val{color:var(--text);font-family:monospace;letter-spacing:0.05em;}
+.vault-actions{display:flex;gap:0.5rem;margin-top:0.8rem;}
+.copy-btn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:0.3rem 0.6rem;border-radius:4px;font-size:0.72rem;cursor:pointer;transition:0.2s;}
+.copy-btn:hover{border-color:var(--primary);color:var(--primary);}
+.provider-badge{display:inline-block;padding:0.2rem 0.5rem;border-radius:10px;font-size:0.68rem;font-weight:700;background:var(--primary-light);color:var(--primary);margin-bottom:0.6rem;}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(3px);z-index:500;display:none;align-items:center;justify-content:center;padding:1rem;}
+.modal-bg.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:480px;max-height:90vh;overflow-y:auto;padding:1.5rem;box-shadow:var(--shadow);}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;padding-bottom:0.8rem;border-bottom:1px solid var(--border);}
+.modal-close{background:var(--surface2);border:none;color:var(--muted);cursor:pointer;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
+.modal-close:hover{background:var(--danger-light);color:var(--danger);}
+.form-row{display:flex;flex-direction:column;gap:0.35rem;margin-bottom:0.9rem;}
+.form-actions{display:flex;gap:0.8rem;justify-content:flex-end;margin-top:1.2rem;padding-top:1rem;border-top:1px solid var(--border);}
+
+/* CHART */
+.chart-wrap{position:relative;height:240px;}
+.charts-row{display:grid;grid-template-columns:2fr 1fr;gap:1.2rem;margin-bottom:1.8rem;}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:0.85rem;}
+th{padding:0.75rem;text-align:left;color:var(--muted);font-weight:600;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.03em;border-bottom:1px solid var(--border);background:var(--surface2);}
+td{padding:0.75rem;border-bottom:1px solid var(--border);}
+tr:hover td{background:var(--surface2);}
+tr:last-child td{border-bottom:none;}
+
+/* TOAST */
+#toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--primary);border-radius:var(--radius-sm);padding:0.8rem 1.2rem;font-size:0.9rem;font-weight:500;z-index:9000;transform:translateY(100px);opacity:0;transition:all 0.3s;max-width:300px;box-shadow:var(--shadow);display:flex;align-items:center;gap:0.5rem;}
+#toast.show{transform:translateY(0);opacity:1;}
+#toast.success{border-left-color:var(--success);}
+#toast.error{border-left-color:var(--danger);}
+
+.empty{text-align:center;padding:2.5rem 1rem;color:var(--muted);background:var(--surface2);border-radius:var(--radius);border:1px dashed var(--border);}
+.empty-icon{font-size:1.8rem;margin-bottom:0.6rem;}
+.flex-row{display:flex;align-items:center;gap:0.8rem;flex-wrap:wrap;}
+
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:3px;}
+
+@media(max-width:768px){
+  .sidebar{width:55px;padding:1rem 0.4rem;}
+  .sidebar-logo,.nav-item span,.sidebar-ver{display:none;}
+  .nav-item{justify-content:center;padding:0.8rem;}
+  .main{margin-left:55px;padding:1rem;}
+  .charts-row{grid-template-columns:1fr;}
+  .stats-grid{grid-template-columns:1fr 1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOCK SCREEN -->
+<div id="lockScreen">
+  <div class="lock-logo">🔐 Personal<span>Private Dashboard</span></div>
+  <div class="lock-card">
+    <h2 style="text-align:center;font-size:1.1rem;">Admin Login</h2>
+    <div class="form-row"><label>Email</label><input class="inp" id="loginEmail" type="email" placeholder="admin@email.com"></div>
+    <div class="form-row"><label>Password</label><input class="inp" id="loginPass" type="password" placeholder="••••••••" onkeypress="if(event.key==='Enter')handleLogin()"></div>
+    <div class="lock-error" id="lockError"></div>
+    <button class="btn btn-primary" style="width:100%;padding:0.8rem;" onclick="handleLogin()" id="loginBtn">Login</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+<div class="shell">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">Personal<span>Private Space</span></div>
+
+  <div class="nav-item active" onclick="nav('dashboard')" id="nav-dashboard">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    <span>Dashboard</span>
+  </div>
+
+  <div class="nav-item" onclick="nav('income')" id="nav-income">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+    <span>Income</span>
+  </div>
+
+  <div class="nav-item" onclick="nav('expenses')" id="nav-expenses">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
+    <span>Expenses</span>
+  </div>
+
+  <div class="nav-item" onclick="nav('vault')" id="nav-vault">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></svg>
+    <span>Password Vault</span>
+  </div>
+
+  <div class="sidebar-bottom">
+    <a href="index.html" class="nav-item" style="font-size:0.82rem;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      <span>Main Dashboard</span>
+    </a>
+    <div class="sidebar-ver">Personal v1.0</div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- DASHBOARD PAGE -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-header">
+      <div>
+        <div class="page-title">📊 Personal Overview</div>
+        <div class="page-sub">Your private financial summary</div>
+      </div>
+      <div style="display:flex;gap:0.6rem;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:0.4rem 0.8rem;">
+        <label style="text-transform:none;font-size:0.8rem;">From</label>
+        <input type="date" id="dash-from" class="inp" style="padding:0.3rem 0.5rem;width:auto;" onchange="renderDashboard()">
+        <label style="text-transform:none;font-size:0.8rem;">To</label>
+        <input type="date" id="dash-to" class="inp" style="padding:0.3rem 0.5rem;width:auto;" onchange="renderDashboard()">
+        <button class="btn btn-outline btn-sm" onclick="resetFilter()">All</button>
+      </div>
+    </div>
+    <div class="stats-grid" id="dashStats"></div>
+    <div class="charts-row">
+      <div class="card"><h3 style="margin-bottom:1rem;">Income vs Expenses</h3><div class="chart-wrap"><canvas id="chartLine"></canvas></div></div>
+      <div class="card"><h3 style="margin-bottom:1rem;">Breakdown</h3><div class="chart-wrap"><canvas id="chartDoughnut"></canvas></div></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:1rem;">Recent Transactions</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Title</th><th>Type</th><th>Amount</th><th>Date</th></tr></thead>
+          <tbody id="recentBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- INCOME PAGE -->
+  <div class="page" id="page-income">
+    <div class="page-header">
+      <div>
+        <div class="page-title">� Income</div>
+        <div class="page-sub">Track all your income sources</div>
+      </div>
+      <button class="btn btn-primary" onclick="openExpModal('','income')">+ Add Income</button>
+    </div>
+    <div class="stats-grid" id="incomeStats"></div>
+    <div class="exp-list" id="incomeList"></div>
+  </div>
+
+  <!-- EXPENSES PAGE -->
+  <div class="page" id="page-expenses">
+    <div class="page-header">
+      <div>
+        <div class="page-title">💸 Expenses</div>
+        <div class="page-sub">Track your personal spending</div>
+      </div>
+      <button class="btn btn-primary" onclick="openExpModal('','expense')">+ Add Expense</button>
+    </div>
+    <div class="stats-grid" id="expStats"></div>
+    <div class="exp-list" id="expList"></div>
+  </div>
+
+  <!-- VAULT PAGE -->
+  <div class="page" id="page-vault">
+    <div class="page-header">
+      <div>
+        <div class="page-title">🔐 Password Vault</div>
+        <div class="page-sub">Securely store your email accounts & passwords</div>
+      </div>
+      <button class="btn btn-primary" onclick="openVaultModal()">+ Add Account</button>
+    </div>
+    <div class="vault-grid" id="vaultGrid"></div>
+  </div>
+
+</main>
+</div>
+</div>
+
+<!-- EXPENSE MODAL -->
+<div class="modal-bg" id="expModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>💸 Add Entry</h3>
+      <button class="modal-close" onclick="closeModal('expModal')">✕</button>
+    </div>
+    <div class="form-row"><label>Title *</label><input class="inp" id="e_title" placeholder="e.g. Netflix, Salary"></div>
+    <div class="form-row"><label>Type *</label>
+      <select class="inp" id="e_type">
+        <option value="expense">Expense</option>
+        <option value="income">Income</option>
+      </select>
+    </div>
+    <div class="form-row"><label>Amount (AED) *</label><input class="inp" id="e_amount" type="number" placeholder="100"></div>
+    <div class="form-row"><label>Category</label>
+      <select class="inp" id="e_cat">
+        <option value="general">General</option>
+        <option value="food">🍔 Food</option>
+        <option value="transport">🚗 Transport</option>
+        <option value="shopping">🛍️ Shopping</option>
+        <option value="bills">💡 Bills</option>
+        <option value="health">🏥 Health</option>
+        <option value="entertainment">🎬 Entertainment</option>
+        <option value="salary">💼 Salary</option>
+        <option value="freelance">💻 Freelance</option>
+        <option value="other">📦 Other</option>
+      </select>
+    </div>
+    <div class="form-row"><label>Date</label><input class="inp" id="e_date" type="date"></div>
+    <div class="form-row"><label>Notes</label><input class="inp" id="e_notes" placeholder="Optional"></div>
+    <div class="form-actions">
+      <button class="btn btn-outline" onclick="closeModal('expModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveExpense()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- VAULT MODAL -->
+<div class="modal-bg" id="vaultModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="vaultModalTitle">🔐 Add Account</h3>
+      <button class="modal-close" onclick="closeModal('vaultModal')">✕</button>
+    </div>
+    <div class="form-row"><label>Provider Name *</label><input class="inp" id="v_provider" placeholder="e.g. Gmail, Shopify, Facebook"></div>
+    <div class="form-row"><label>Email Address *</label><input class="inp" id="v_email" type="email" placeholder="you@example.com"></div>
+    <div class="form-row"><label>Account Password *</label>
+      <div style="position:relative;">
+        <input class="inp" id="v_pass" type="password" placeholder="Account password" style="padding-right:2.5rem;">
+        <button onclick="togglePass('v_pass')" style="position:absolute;right:0.6rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:0.85rem;">👁</button>
+      </div>
+    </div>
+    <div class="form-row"><label>Gmail App Password <span style="color:var(--muted);font-weight:400;text-transform:none;">(Optional)</span></label>
+      <div style="position:relative;">
+        <input class="inp" id="v_gmail_pass" type="password" placeholder="Gmail app password (if different)" style="padding-right:2.5rem;">
+        <button onclick="togglePass('v_gmail_pass')" style="position:absolute;right:0.6rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:0.85rem;">👁</button>
+      </div>
+    </div>
+    <div class="form-row"><label>Notes</label><input class="inp" id="v_notes" placeholder="e.g. Recovery email, 2FA info"></div>
+    <div class="form-actions">
+      <button class="btn btn-outline" onclick="closeModal('vaultModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveVault()">Save Account</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── FIREBASE — separate collection prefix "personal_" ─────────
+const firebaseConfig = {
+  apiKey: "AIzaSyC_asx16rLu7LmC3d-jRVBESrQvfrceuVo",
+  authDomain: "aezoon-app.firebaseapp.com",
+  projectId: "aezoon-app",
+  storageBucket: "aezoon-app.firebasestorage.app",
+  messagingSenderId: "900605885255",
+  appId: "1:900605885255:web:ecaddb61a88ad344c1ea62"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+// Theme
+document.body.setAttribute('data-theme', localStorage.getItem('aezoon_theme') || 'dark');
+
+// ── DATA ──────────────────────────────────────────────────────
+let P_EXPENSES = [];   // personal expenses only
+let P_VAULT = [];      // password vault
+let lineChart = null, doughnutChart = null;
+
+// ── AUTH ──────────────────────────────────────────────────────
+auth.onAuthStateChanged(user => {
+  if (user) {
+    document.getElementById('lockScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    startSync();
+    initDates();
+  } else {
+    document.getElementById('lockScreen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+  }
+});
+
+function handleLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const err = document.getElementById('lockError');
+  err.style.display = 'none';
+  if (!email || !pass) { err.textContent = 'Enter email and password.'; err.style.display = 'block'; return; }
+  document.getElementById('loginBtn').textContent = 'Logging in...';
+  auth.signInWithEmailAndPassword(email, pass)
+    .then(() => { document.getElementById('loginBtn').textContent = 'Login'; })
+    .catch(e => { document.getElementById('loginBtn').textContent = 'Login'; err.textContent = e.message; err.style.display = 'block'; });
+}
+
+// ── SYNC — uses "personal_expenses" and "personal_vault" collections ──
+function startSync() {
+  db.collection("personal_expenses").onSnapshot(snap => {
+    P_EXPENSES = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderDashboard();
+    if (document.getElementById('page-income').classList.contains('active')) renderIncome();
+    if (document.getElementById('page-expenses').classList.contains('active')) renderExpenses();
+  });
+  db.collection("personal_vault").onSnapshot(snap => {
+    P_VAULT = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (document.getElementById('page-vault').classList.contains('active')) renderVault();
+  });
+}
+
+// ── NAV ───────────────────────────────────────────────────────
+function nav(page) {
+  document.querySelectorAll('.page, .nav-item').forEach(e => e.classList.remove('active'));
+  document.getElementById('page-' + page)?.classList.add('active');
+  document.getElementById('nav-' + page)?.classList.add('active');
+  if (page === 'dashboard') renderDashboard();
+  if (page === 'income') renderIncome();
+  if (page === 'expenses') renderExpenses();
+  if (page === 'vault') renderVault();
+}
+
+function initDates() {
+  const t = new Date();
+  document.getElementById('dash-to').value = t.toISOString().split('T')[0];
+  t.setDate(t.getDate() - 30);
+  document.getElementById('dash-from').value = t.toISOString().split('T')[0];
+  renderDashboard();
+}
+
+function resetFilter() {
+  document.getElementById('dash-from').value = '';
+  document.getElementById('dash-to').value = '';
+  renderDashboard();
+}
+
+function fmt(n) { return Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+// ── DASHBOARD ─────────────────────────────────────────────────
+function renderDashboard() {
+  const from = document.getElementById('dash-from')?.value || '';
+  const to = document.getElementById('dash-to')?.value || '';
+  const filtered = P_EXPENSES.filter(e => (!from || (e.date||'') >= from) && (!to || (e.date||'') <= to));
+  const income = filtered.filter(e => e.type === 'income').reduce((s, e) => s + (parseFloat(e.amount)||0), 0);
+  const expense = filtered.filter(e => e.type === 'expense').reduce((s, e) => s + (parseFloat(e.amount)||0), 0);
+  const net = income - expense;
+
+  document.getElementById('dashStats').innerHTML = `
+    <div class="stat-card c2"><div class="stat-icon">💰</div><div class="stat-label">Total Income</div><div class="stat-val">AED ${fmt(income)}</div><div class="stat-sub">In range</div></div>
+    <div class="stat-card c4"><div class="stat-icon">💸</div><div class="stat-label">Total Expenses</div><div class="stat-val">AED ${fmt(expense)}</div><div class="stat-sub">In range</div></div>
+    <div class="stat-card c1"><div class="stat-icon">${net>=0?'📈':'📉'}</div><div class="stat-label">Net Balance</div><div class="stat-val" style="color:${net>=0?'var(--success)':'var(--danger)'}">AED ${fmt(net)}</div><div class="stat-sub">${net>=0?'Surplus':'Deficit'}</div></div>
+    <div class="stat-card c3"><div class="stat-icon">📋</div><div class="stat-label">Transactions</div><div class="stat-val">${filtered.length}</div><div class="stat-sub">Entries</div></div>
+  `;
+
+  renderLineChart(filtered);
+  renderDoughnut(filtered);
+
+  // Recent 6
+  const recent = [...filtered].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,6);
+  const tbody = document.getElementById('recentBody');
+  if (!recent.length) { tbody.innerHTML = '<tr><td colspan="4"><div class="empty" style="padding:1rem;">No transactions yet</div></td></tr>'; return; }
+  tbody.innerHTML = recent.map(e => `
+    <tr>
+      <td><strong>${e.title}</strong> <span style="font-size:0.75rem;color:var(--muted);">${e.category||''}</span></td>
+      <td><span style="background:${e.type==='income'?'var(--success-light)':'var(--danger-light)'};color:${e.type==='income'?'var(--success)':'var(--danger)'};padding:0.2rem 0.5rem;border-radius:10px;font-size:0.75rem;font-weight:600;">${e.type==='income'?'Income':'Expense'}</span></td>
+      <td style="color:${e.type==='income'?'var(--success)':'var(--danger)'};font-weight:600;">${e.type==='income'?'+':'−'} AED ${fmt(e.amount)}</td>
+      <td style="color:var(--muted)">${e.date||'—'}</td>
+    </tr>`).join('');
+}
+
+function renderLineChart(data) {
+  const isLight = document.body.getAttribute('data-theme') === 'light';
+  const gc = isLight ? '#e2e8f0' : 'rgba(255,255,255,0.05)';
+  const tc = isLight ? '#64748b' : '#94a3b8';
+  const months = {};
+  data.forEach(e => {
+    if (!e.date) return;
+    const m = e.date.substring(0,7);
+    if (!months[m]) months[m] = { income:0, expense:0 };
+    if (e.type==='income') months[m].income += parseFloat(e.amount)||0;
+    else months[m].expense += parseFloat(e.amount)||0;
+  });
+  const labels = Object.keys(months).sort().slice(-6);
+  if (lineChart) lineChart.destroy();
+  lineChart = new Chart(document.getElementById('chartLine').getContext('2d'), {
+    type:'line',
+    data:{ labels, datasets:[
+      { label:'Income', data:labels.map(l=>months[l]?.income||0), borderColor:'#10b981', backgroundColor:'rgba(16,185,129,0.1)', tension:0.4, fill:true },
+      { label:'Expense', data:labels.map(l=>months[l]?.expense||0), borderColor:'#ef4444', backgroundColor:'rgba(239,68,68,0.1)', tension:0.4, fill:true }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ color:tc } } }, scales:{ x:{ ticks:{ color:tc }, grid:{ color:gc } }, y:{ ticks:{ color:tc }, grid:{ color:gc } } } }
+  });
+}
+
+function renderDoughnut(data) {
+  const isLight = document.body.getAttribute('data-theme') === 'light';
+  const tc = isLight ? '#64748b' : '#94a3b8';
+  const cats = {};
+  data.filter(e=>e.type==='expense').forEach(e => {
+    const c = e.category || 'general';
+    cats[c] = (cats[c]||0) + (parseFloat(e.amount)||0);
+  });
+  const labels = Object.keys(cats);
+  const colors = ['#8b5cf6','#ef4444','#f59e0b','#10b981','#0ea5e9','#ec4899','#6366f1','#14b8a6','#f97316','#84cc16'];
+  if (doughnutChart) doughnutChart.destroy();
+  if (!labels.length) return;
+  doughnutChart = new Chart(document.getElementById('chartDoughnut').getContext('2d'), {
+    type:'doughnut',
+    data:{ labels, datasets:[{ data:labels.map(l=>cats[l]), backgroundColor:colors.slice(0,labels.length), borderWidth:0 }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'65%', plugins:{ legend:{ position:'bottom', labels:{ color:tc, padding:10, font:{ size:11 } } } } }
+  });
+}
+</script>
+
+<script>
+// ── EXPENSES ──────────────────────────────────────────────────
+function openExpModal(id, defaultType) {
+  if (id) {
+    const e = P_EXPENSES.find(x => x.id === id);
+    if (!e) return;
+    document.getElementById('e_title').value = e.title||'';
+    document.getElementById('e_type').value = e.type||'expense';
+    document.getElementById('e_amount').value = e.amount||'';
+    document.getElementById('e_cat').value = e.category||'general';
+    document.getElementById('e_date').value = e.date||'';
+    document.getElementById('e_notes').value = e.notes||'';
+    document.getElementById('expModal').dataset.editId = id;
+  } else {
+    ['e_title','e_amount','e_notes'].forEach(f => document.getElementById(f).value='');
+    document.getElementById('e_type').value = defaultType || 'expense';
+    document.getElementById('e_cat').value = 'general';
+    document.getElementById('e_date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('expModal').dataset.editId = '';
+  }
+  document.getElementById('expModal').classList.add('open');
+}
+
+function saveExpense() {
+  const title = document.getElementById('e_title').value.trim();
+  const amount = document.getElementById('e_amount').value;
+  if (!title || !amount) return toast('Fill required fields', 'error');
+  const editId = document.getElementById('expModal').dataset.editId;
+  const data = {
+    title, type: document.getElementById('e_type').value,
+    amount: parseFloat(amount), category: document.getElementById('e_cat').value,
+    date: document.getElementById('e_date').value || new Date().toISOString().split('T')[0],
+    notes: document.getElementById('e_notes').value.trim(),
+    created_at: editId ? (P_EXPENSES.find(e=>e.id===editId)?.created_at||Date.now()) : Date.now()
+  };
+  const docId = editId || 'pe_' + Date.now();
+  db.collection("personal_expenses").doc(docId).set(data)
+    .then(() => { closeModal('expModal'); toast(editId?'Updated!':'Added!', 'success'); })
+    .catch(err => toast('Error: '+err.message, 'error'));
+}
+
+function deleteExpense(id) {
+  if (!confirm('Delete this entry?')) return;
+  db.collection("personal_expenses").doc(id).delete()
+    .then(() => toast('Deleted', 'success'))
+    .catch(e => toast('Error: '+e.message, 'error'));
+}
+
+const catEmoji = { general:'📦', food:'🍔', transport:'🚗', shopping:'🛍️', bills:'💡', health:'🏥', entertainment:'🎬', salary:'💼', freelance:'💻', other:'📦' };
+
+function renderIncome() {
+  const items = [...P_EXPENSES].filter(e => e.type === 'income').sort((a,b) => b.created_at - a.created_at);
+  const total = items.reduce((s,e) => s+(parseFloat(e.amount)||0), 0);
+  const thisMonth = new Date().toISOString().substring(0,7);
+  const monthly = items.filter(e=>(e.date||'').startsWith(thisMonth)).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+
+  document.getElementById('incomeStats').innerHTML = `
+    <div class="stat-card c2"><div class="stat-icon">💰</div><div class="stat-label">Total Income</div><div class="stat-val">AED ${fmt(total)}</div><div class="stat-sub">All time</div></div>
+    <div class="stat-card c1"><div class="stat-icon">�</div><div class="stat-label">This Month</div><div class="stat-val">AED ${fmt(monthly)}</div><div class="stat-sub">${thisMonth}</div></div>
+    <div class="stat-card c3"><div class="stat-icon">📋</div><div class="stat-label">Entries</div><div class="stat-val">${items.length}</div><div class="stat-sub">Total records</div></div>
+  `;
+
+  const list = document.getElementById('incomeList');
+  if (!items.length) { list.innerHTML = '<div class="empty"><div class="empty-icon">�</div>No income entries yet</div>'; return; }
+  list.innerHTML = items.map(e => `
+    <div class="exp-item">
+      <div class="exp-icon profit">${catEmoji[e.category]||'�'}</div>
+      <div class="exp-info">
+        <div class="exp-title">${e.title}</div>
+        <div class="exp-date">${e.date||'—'}${e.notes?' · '+e.notes:''}</div>
+      </div>
+      <div class="exp-amount profit">+ AED ${fmt(e.amount)}</div>
+      <button class="btn btn-outline btn-sm" onclick="openExpModal('${e.id}')">✏️</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteExpense('${e.id}')">🗑</button>
+    </div>`).join('');
+}
+
+function renderExpenses() {
+  const items = [...P_EXPENSES].filter(e => e.type === 'expense').sort((a,b) => b.created_at - a.created_at);
+  const total = items.reduce((s,e) => s+(parseFloat(e.amount)||0), 0);
+  const thisMonth = new Date().toISOString().substring(0,7);
+  const monthly = items.filter(e=>(e.date||'').startsWith(thisMonth)).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+
+  document.getElementById('expStats').innerHTML = `
+    <div class="stat-card c4"><div class="stat-icon">💸</div><div class="stat-label">Total Expenses</div><div class="stat-val">AED ${fmt(total)}</div><div class="stat-sub">All time</div></div>
+    <div class="stat-card c3"><div class="stat-icon">📅</div><div class="stat-label">This Month</div><div class="stat-val">AED ${fmt(monthly)}</div><div class="stat-sub">${thisMonth}</div></div>
+    <div class="stat-card c1"><div class="stat-icon">📋</div><div class="stat-label">Entries</div><div class="stat-val">${items.length}</div><div class="stat-sub">Total records</div></div>
+  `;
+
+  const list = document.getElementById('expList');
+  if (!items.length) { list.innerHTML = '<div class="empty"><div class="empty-icon">💸</div>No expense entries yet</div>'; return; }
+  list.innerHTML = items.map(e => `
+    <div class="exp-item">
+      <div class="exp-icon expense">${catEmoji[e.category]||'💸'}</div>
+      <div class="exp-info">
+        <div class="exp-title">${e.title}</div>
+        <div class="exp-date">${e.date||'—'}${e.notes?' · '+e.notes:''}</div>
+      </div>
+      <div class="exp-amount expense">− AED ${fmt(e.amount)}</div>
+      <button class="btn btn-outline btn-sm" onclick="openExpModal('${e.id}')">✏️</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteExpense('${e.id}')">🗑</button>
+    </div>`).join('');
+}
+
+// ── VAULT ─────────────────────────────────────────────────────
+function openVaultModal(id) {
+  document.getElementById('vaultModalTitle').textContent = id ? '✏️ Edit Account' : '🔐 Add Account';
+  if (id) {
+    const v = P_VAULT.find(x => x.id === id);
+    if (!v) return;
+    document.getElementById('v_provider').value = v.provider||'';
+    document.getElementById('v_email').value = v.email||'';
+    document.getElementById('v_pass').value = v.password||'';
+    document.getElementById('v_gmail_pass').value = v.gmail_pass||'';
+    document.getElementById('v_notes').value = v.notes||'';
+    document.getElementById('vaultModal').dataset.editId = id;
+  } else {
+    ['v_provider','v_email','v_pass','v_gmail_pass','v_notes'].forEach(f => document.getElementById(f).value='');
+    document.getElementById('vaultModal').dataset.editId = '';
+  }
+  document.getElementById('vaultModal').classList.add('open');
+}
+
+function saveVault() {
+  const provider = document.getElementById('v_provider').value.trim();
+  const email = document.getElementById('v_email').value.trim();
+  const password = document.getElementById('v_pass').value;
+  if (!provider || !email || !password) return toast('Provider, email and password required', 'error');
+  const editId = document.getElementById('vaultModal').dataset.editId;
+  const data = {
+    provider, email, password,
+    gmail_pass: document.getElementById('v_gmail_pass').value,
+    notes: document.getElementById('v_notes').value.trim(),
+    created_at: editId ? (P_VAULT.find(v=>v.id===editId)?.created_at||Date.now()) : Date.now()
+  };
+  const docId = editId || 'pv_' + Date.now();
+  db.collection("personal_vault").doc(docId).set(data)
+    .then(() => { closeModal('vaultModal'); toast(editId?'Updated!':'Account saved!', 'success'); })
+    .catch(err => toast('Error: '+err.message, 'error'));
+}
+
+function deleteVault(id) {
+  if (!confirm('Delete this account?')) return;
+  db.collection("personal_vault").doc(id).delete()
+    .then(() => toast('Deleted', 'success'))
+    .catch(e => toast('Error: '+e.message, 'error'));
+}
+
+function togglePass(fieldId) {
+  const f = document.getElementById(fieldId);
+  f.type = f.type === 'password' ? 'text' : 'password';
+}
+
+function copyText(text, label) {
+  navigator.clipboard.writeText(text).then(() => toast(`${label} copied!`, 'success'));
+}
+
+function renderVault() {
+  const grid = document.getElementById('vaultGrid');
+  if (!P_VAULT.length) {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🔐</div>No accounts saved yet</div>';
+    return;
+  }
+  grid.innerHTML = [...P_VAULT].sort((a,b)=>b.created_at-a.created_at).map(v => `
+    <div class="vault-card">
+      <div class="provider-badge">${v.provider}</div>
+      <div class="vault-provider">${v.provider}</div>
+      <div class="vault-email">📧 ${v.email}</div>
+      <div class="vault-field">
+        <div><div class="vault-field-label">Password</div><div class="vault-field-val">••••••••</div></div>
+        <button class="copy-btn" onclick="copyText('${v.password}','Password')">📋 Copy</button>
+      </div>
+      ${v.gmail_pass ? `<div class="vault-field">
+        <div><div class="vault-field-label">Gmail App Pass</div><div class="vault-field-val">••••••••</div></div>
+        <button class="copy-btn" onclick="copyText('${v.gmail_pass}','Gmail Password')">📋 Copy</button>
+      </div>` : ''}
+      ${v.notes ? `<div style="font-size:0.78rem;color:var(--muted);margin-top:0.4rem;">📝 ${v.notes}</div>` : ''}
+      <div class="vault-actions">
+        <button class="copy-btn" onclick="copyText('${v.email}','Email')">📧 Copy Email</button>
+        <button class="copy-btn" onclick="openVaultModal('${v.id}')">✏️ Edit</button>
+        <button class="copy-btn" style="color:var(--danger);" onclick="deleteVault('${v.id}')">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+// ── UTILS ─────────────────────────────────────────────────────
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-bg').forEach(bg => bg.addEventListener('click', e => { if(e.target===bg) bg.classList.remove('open'); }));
+
+function toast(msg, type='success') {
+  const el = document.getElementById('toast');
+  el.innerHTML = `${type==='success'?'✅':'❌'} <span>${msg}</span>`;
+  el.className = 'show '+type;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.className='', 3000);
+}
+</script>
+</body>
+</html>
