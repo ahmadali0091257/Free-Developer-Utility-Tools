@@ -229,16 +229,6 @@ tr:last-child td { border-bottom:none; }
 .tag-loyal { background:rgba(236,72,153,0.15); color:#ec4899; border:1px solid rgba(236,72,153,0.3); }
 .tag-manual { background:var(--surface3); color:var(--muted); border:1px solid var(--border); }
 
-/* ── GOALS ── */
-.goals-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:1.2rem; }
-.goal-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.2rem; box-shadow: var(--shadow-sm); }
-.goal-name { font-size:1rem; font-weight:600; margin-bottom:0.4rem; }
-.goal-range { font-size:0.8rem; color:var(--muted); margin-bottom:1rem; display: flex; align-items: center; gap: 0.4rem; }
-.goal-amounts { display:flex; justify-content:space-between; margin-bottom:0.6rem; font-size:0.85rem; }
-.goal-bar-bg { background:var(--surface3); border-radius:20px; height:8px; overflow:hidden; }
-.goal-bar-fill { height:100%; border-radius:20px; transition:width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
-.goal-pct { text-align:right; font-size:0.8rem; font-weight: 500; color:var(--muted); margin-top:0.4rem; }
-
 /* ── PENDING ORDERS ── */
 .pending-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:1.2rem; }
 .pending-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.2rem; cursor:pointer; transition:all 0.2s; box-shadow: var(--shadow-sm); }
@@ -359,9 +349,10 @@ tr:last-child td { border-bottom:none; }
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     <span>Customers</span>
   </div>
-  <div class="nav-item" onclick="nav('aigoals')" id="nav-aigoals">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-    <span>AI Goals</span>
+  <div class="nav-item" onclick="nav('aiteam')" id="nav-aiteam">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 5a3 3 0 1 1-3 3 3 3 0 0 1 3-3zm0 13a8 8 0 0 1-6.2-3c.1-2 4-3.1 6.2-3.1s6.1 1.1 6.2 3.1A8 8 0 0 1 12 20z"/></svg>
+    <span>AI Team</span>
+    <span id="aiTeamNavBadge" style="display:none;background:#ef4444;color:#fff;font-size:0.62rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:10px;min-width:18px;text-align:center;margin-left:auto;">0</span>
   </div>
   <a href="statement.html" class="nav-item">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="16" y1="2" x2="16" y2="4"/><line x1="8" y1="2" x2="8" y2="4"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -373,6 +364,11 @@ tr:last-child td { border-bottom:none; }
   </div>
 
   <div class="sidebar-bottom">
+    <a href="../personal/index.html" class="nav-item" style="background:linear-gradient(135deg,rgba(139,92,246,0.12),rgba(99,102,241,0.08));border:1px solid rgba(139,92,246,0.3);border-radius:8px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" width="18" height="18"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span style="flex:1;color:var(--text);">Personal</span>
+      <span style="font-size:0.62rem;background:rgba(139,92,246,0.2);color:#8b5cf6;padding:0.15rem 0.4rem;border-radius:4px;font-weight:700;">PRIVATE</span>
+    </a>
     <a href="ai-editor.html" class="nav-item" style="background: var(--surface2); border: 1px dashed var(--border); border-radius: 8px;">
       <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
       <span style="flex:1; color: var(--text);">AI Editor</span>
@@ -526,17 +522,63 @@ tr:last-child td { border-bottom:none; }
     </div>
   </div>
 
-  <!-- AI GOALS PAGE -->
-  <div class="page" id="page-aigoals">
-    <div class="page-header">
-      <div>
-        <div class="page-title">🎯 AI Goals</div>
-        <div class="page-sub">AI-powered profit targets — auto-updated from gross profit</div>
+  <!-- AI TEAM PAGE -->
+  <div class="page" id="page-aiteam">
+    <div class="ai-team-shell">
+
+      <!-- LEFT: AI Contacts -->
+      <div class="ai-sidebar">
+        <div class="ai-sidebar-header">
+          <span class="ai-sidebar-title">🤖 AI Team</span>
+          <button class="ai-settings-btn" onclick="openAiTeamSettings()" title="Settings">⚙️</button>
+        </div>
+        <div class="ai-contact-list" id="aiContactList"></div>
       </div>
-      <button class="btn btn-primary" onclick="openAiGoalModal()">+ New Goal</button>
+
+      <!-- RIGHT: Chat -->
+      <div class="ai-chat-area">
+
+        <!-- Empty State -->
+        <div class="ai-empty-state" id="aiEmptyState">
+          <div class="ai-empty-icon">🤖</div>
+          <div class="ai-empty-text">Koi AI select karo baat karne ke liye</div>
+        </div>
+
+        <!-- Chat Main (hidden until agent selected) -->
+        <div id="aiChatMain" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+          <!-- Header -->
+          <div class="ai-chat-header">
+            <div class="ai-avatar detective" id="aiChatHeaderAvatar">🕵️</div>
+            <div class="ai-chat-header-info">
+              <div class="ai-chat-header-name" id="aiChatHeaderName">Sherlock</div>
+              <div class="ai-chat-header-status" id="aiChatHeaderStatus">Online</div>
+            </div>
+            <button onclick="clearAiChat()" title="Chat clear karo"
+              style="background:none;border:none;color:#8696a0;cursor:pointer;padding:0.4rem;border-radius:50%;font-size:1rem;transition:0.2s;"
+              onmouseover="this.style.background='rgba(255,255,255,0.08)'"
+              onmouseout="this.style.background='none'">🗑</button>
+          </div>
+
+          <!-- Messages -->
+          <div class="ai-messages" id="aiMessagesContainer"></div>
+
+          <!-- Input -->
+          <div class="ai-input-area">
+            <textarea class="ai-input-box" id="aiMsgInput"
+              placeholder="Message likho..."
+              rows="1"
+              onkeydown="aiInputKeydown(event)"></textarea>
+            <button class="ai-send-btn" onclick="sendAiMessage()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="22" y1="2" x2="11" y2="13"/>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+      </div>
     </div>
-    <div class="stats-grid" id="aiGoalStats" style="margin-bottom:1.5rem;"></div>
-    <div class="goals-grid" id="aiGoalsGrid"></div>
   </div>
 
   <!-- SETTINGS PAGE -->
@@ -799,61 +841,14 @@ tr:last-child td { border-bottom:none; }
   </div>
 </div>
 
-<!-- AI GOAL MODAL -->
-<div class="modal-bg" id="aiGoalModal">
-  <div class="modal" style="max-width:460px;">
-    <div class="modal-header">
-      <h3>🎯 Create AI Goal</h3>
-      <button class="modal-close" onclick="closeModal('aiGoalModal')">✕</button>
+<!-- AI TEAM SETTINGS OVERLAY -->
+<div class="ai-settings-overlay" id="aiSettingsOverlay">
+  <div class="ai-settings-panel">
+    <div class="ai-settings-header">
+      <h3>⚙️ AI Team Settings</h3>
+      <button class="ai-settings-close" onclick="closeAiTeamSettings()">✕</button>
     </div>
-    <div style="display:flex;flex-direction:column;gap:1rem;">
-      <div class="form-row">
-        <label>Goal Name *</label>
-        <input class="inp" id="ag_name" placeholder="e.g. Q2 Revenue Target">
-      </div>
-      <div class="form-row">
-        <label>Target Amount (AED) *</label>
-        <input class="inp" id="ag_target" type="number" placeholder="10000" oninput="aiGoalPreview()">
-      </div>
-      <div class="form-grid">
-        <div class="form-row">
-          <label>Start Date *</label>
-          <input class="inp" id="ag_from" type="date" onchange="aiGoalPreview()">
-        </div>
-        <div class="form-row">
-          <label>End Date *</label>
-          <input class="inp" id="ag_to" type="date" onchange="aiGoalPreview()">
-        </div>
-      </div>
-      <div class="form-row">
-        <label>Goal Type</label>
-        <select class="inp" id="ag_type">
-          <option value="gross_profit">Gross Profit (Orders only)</option>
-          <option value="net_profit">Net Profit (After expenses)</option>
-          <option value="revenue">Total Revenue</option>
-          <option value="orders">Order Count</option>
-        </select>
-      </div>
-      <div class="form-row">
-        <label>Notes (optional)</label>
-        <input class="inp" id="ag_notes" placeholder="e.g. Ramadan campaign target">
-      </div>
-      <!-- Live Preview -->
-      <div id="agPreview" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:0.9rem;">
-        <div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:0.6rem;">Live Preview</div>
-        <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:0.3rem;">
-          <span>Current in range:</span><strong id="agPreviewCur" style="color:var(--primary)">AED 0</strong>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:0.5rem;">
-          <span>Progress:</span><strong id="agPreviewPct" style="color:var(--primary)">0%</strong>
-        </div>
-        <div class="goal-bar-bg"><div id="agPreviewBar" class="goal-bar-fill" style="width:0%;background:var(--warning);"></div></div>
-      </div>
-    </div>
-    <div class="form-actions">
-      <button class="btn btn-outline" onclick="closeModal('aiGoalModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveAiGoal()">Save Goal</button>
-    </div>
+    <div class="ai-config-cards" id="aiConfigCards"></div>
   </div>
 </div>
 
@@ -862,6 +857,7 @@ tr:last-child td { border-bottom:none; }
 
 <!-- Script dependencies -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="ai.css">
 
 <script>
 // Configure Chart JS Font
@@ -1039,13 +1035,15 @@ function handleLogout() {
 function nav(page) {
   document.querySelectorAll('.page, .nav-item').forEach(e => e.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
-  document.getElementById('nav-' + page).classList.add('active');
+  document.getElementById('nav-' + page)?.classList.add('active');
   
   if (page === 'dashboard') renderDashboard();
   if (page === 'orders') renderOrders();
   if (page === 'expenses') renderExpenses();
   if (page === 'pending') renderPending();
   if (page === 'goals') renderGoals();
+  if (page === 'customers') renderCustomers();
+  if (page === 'aiteam') { if(typeof initAiTeam==='function') initAiTeam(); }
   if (page === 'settings') renderSettings();
 }
 
@@ -1058,6 +1056,8 @@ function initApp() {
   d.setDate(d.getDate() - 30);
   document.getElementById('dash-from').value = d.toISOString().split('T')[0];
   renderDashboard();
+  // Pre-load AI team config
+  setTimeout(() => { if(typeof initAiTeam==='function') initAiTeam(); }, 500);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1099,7 +1099,7 @@ function renderDashboard() {
   renderRecentOrders(deliveredOrders);
 }
 
-function fmt(n) { return Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 }); }
+function fmt(n) { return Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
 function renderLineChart(orders) {
   const isLight = document.body.getAttribute('data-theme') === 'light';
@@ -1657,10 +1657,6 @@ function saveGoal() { /* overridden by working.js */ }
 function openGoalModal() { /* overridden by working.js */ }
 function previewGoal() { /* overridden by working.js */ }
 function renderSettings() { /* overridden by working.js */ }
-function openAiGoalModal() { /* overridden by working.js */ }
-function saveAiGoal() { /* overridden by working.js */ }
-function aiGoalPreview() { /* overridden by working.js */ }
-function renderAiGoals() { /* overridden by working.js */ }
 function showOrderDetail(id) { /* overridden by working.js */ }
 function exportBackup() { /* overridden by working.js */ }
 function importBackup(e) { /* overridden by working.js */ }
@@ -1670,5 +1666,6 @@ function confirmClearData() { /* overridden by working.js */ }
 
 <!-- working.js: Fixes KEYS, saveGoal, renderSettings, showOrderDetail & legacy functions -->
 <script src="working.js"></script>
+<script src="ai.js"></script>
 </body>
 </html>
