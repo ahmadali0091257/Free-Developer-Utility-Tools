@@ -30,11 +30,24 @@
   // ─────────────────────────────────────────────────────────────
 
   // Session ID — har visitor ka unique ID
-  const SESSION_ID = 'aezoon_' + (localStorage.getItem('aezoon_session') || (() => {
-    const id = 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
-    localStorage.setItem('aezoon_session', id);
-    return id;
-  })());
+  // ── Session ID — localStorage safe with fallback ─────────────
+  function getSessionId() {
+    try {
+      let id = localStorage.getItem('aezoon_session');
+      if (!id) {
+        id = 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+        localStorage.setItem('aezoon_session', id);
+      }
+      return 'aezoon_' + id;
+    } catch (e) {
+      // localStorage blocked (Shopify sandbox) — use in-memory ID
+      if (!window._aezoonSessionId) {
+        window._aezoonSessionId = 'aezoon_sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+      }
+      return window._aezoonSessionId;
+    }
+  }
+  const SESSION_ID = getSessionId();
 
   let db = null;
   let AI_CONFIG = { model: 'gemini-1.5-flash', api_key: '', system_prompt: '' };
@@ -42,110 +55,112 @@
   let isTyping = false;
   let chatOpen = false;
 
-  // ── Load Firebase ─────────────────────────────────────────────
-  function loadFirebase(cb) {
-    if (window.firebase && window.firebase.firestore) { initDB(cb); return; }
-    const scripts = [
-      'https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js',
-      'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js'
-    ];
-    let loaded = 0;
-    scripts.forEach(src => {
-      const s = document.createElement('script');
-      s.src = src;
-      s.onload = () => { if (++loaded === scripts.length) initDB(cb); };
-      document.head.appendChild(s);
-    });
+  // ── Firebase REST API — no SDK, no CSP issues ────────────────
+  const FB_PROJECT = WIDGET_CONFIG.firebaseConfig.projectId;
+  const FB_KEY = WIDGET_CONFIG.firebaseConfig.apiKey;
+  const FB_BASE = `https://firestore.googleapis.com/v1/projects/${FB_PROJECT}/databases/(default)/documents`;
+
+  async function fbGet(col, docId) {
+    try {
+      const r = await fetch(`${FB_BASE}/${col}/${docId}?key=${FB_KEY}`);
+      if (!r.ok) return null;
+      return fbParse((await r.json()).fields || {});
+    } catch(e) { return null; }
   }
 
-  function initDB(cb) {
-    if (!firebase.apps.length) firebase.initializeApp(WIDGET_CONFIG.firebaseConfig);
-    db = firebase.firestore();
-    cb();
+  async function fbSet(col, docId, obj) {
+    try {
+      await fetch(`${FB_BASE}/${col}/${docId}?key=${FB_KEY}`, {
+        method: 'PATCH', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ fields: fbEncode(obj) })
+      });
+    } catch(e) { /* silent */ }
   }
 
-  // ── Load AI Config from Firestore ─────────────────────────────
+  function fbParse(fields) {
+    const r = {};
+    for (const [k,v] of Object.entries(fields)) r[k] = fbVal(v);
+    return r;
+  }
+  function fbVal(v) {
+    if (v.stringValue !== undefined) return v.stringValue;
+    if (v.integerValue !== undefined) return parseInt(v.integerValue);
+    if (v.doubleValue !== undefined) return parseFloat(v.doubleValue);
+    if (v.booleanValue !== undefined) return v.booleanValue;
+    if (v.arrayValue) return (v.arrayValue.values||[]).map(fbVal);
+    if (v.mapValue) return fbParse(v.mapValue.fields||{});
+    return null;
+  }
+  function fbEncode(obj) {
+    const f = {};
+    for (const [k,v] of Object.entries(obj)) f[k] = fbEncVal(v);
+    return f;
+  }
+  function fbEncVal(v) {
+    if (v === null || v === undefined) return {nullValue:null};
+    if (typeof v === 'string') return {stringValue:v};
+    if (typeof v === 'boolean') return {booleanValue:v};
+    if (typeof v === 'number') return Number.isInteger(v) ? {integerValue:String(v)} : {doubleValue:v};
+    if (Array.isArray(v)) return {arrayValue:{values:v.map(fbEncVal)}};
+    if (typeof v === 'object') return {mapValue:{fields:fbEncode(v)}};
+    return {stringValue:String(v)};
+  }
+
+  // ── Load AI Config ────────────────────────────────────────────
   async function loadAIConfig() {
-    try {
-      const snap = await db.collection('support_settings').doc('config').get();
-      if (snap.exists) AI_CONFIG = { ...AI_CONFIG, ...snap.data() };
-      // Also load Knowledge Base
-      const kbSnap = await db.collection('support_settings').doc('knowledge_base').get();
-      if (kbSnap.exists) AI_CONFIG.kb_cards = kbSnap.data().cards || [];
-    } catch (e) { console.log('Aezoon: config load error', e); }
+    const config = await fbGet('support_settings', 'config');
+    if (config) AI_CONFIG = { ...AI_CONFIG, ...config };
+    const kb = await fbGet('support_settings', 'knowledge_base');
+    if (kb && kb.cards) AI_CONFIG.kb_cards = kb.cards;
   }
 
-  // ── Load existing chat history ────────────────────────────────
+  // ── Load History ──────────────────────────────────────────────
   async function loadHistory() {
-    try {
-      const snap = await db.collection('support_chats').doc(SESSION_ID).get();
-      if (snap.exists) {
-        const data = snap.data();
-        chatHistory = data.messages || [];
-        chatHistory.forEach(m => appendBubble(m.role, m.content, m.time, false));
-        // Start real-time listener for human replies
-        startChatListener();
-      } else {
-        appendBubble('bot', AI_CONFIG.welcome_msg || WIDGET_CONFIG.welcomeMsg, getTime(), false);
-        startChatListener();
-      }
-      scrollBottom();
-    } catch (e) {
-      appendBubble('bot', WIDGET_CONFIG.welcomeMsg, getTime(), false);
+    const data = await fbGet('support_chats', SESSION_ID);
+    if (data && data.messages) {
+      chatHistory = data.messages;
+      chatHistory.forEach(m => appendBubble(m.role, m.content, m.time, false));
+    } else {
+      appendBubble('bot', AI_CONFIG.welcome_msg || WIDGET_CONFIG.welcomeMsg, getTime(), false);
     }
+    scrollBottom();
+    startChatListener();
   }
 
-  // ── Real-time listener for human replies ──────────────────────
+  // ── Poll for human replies every 8s ──────────────────────────
   let lastMsgCount = 0;
   function startChatListener() {
-    db.collection('support_chats').doc(SESSION_ID)
-      .onSnapshot(snap => {
-        if (!snap.exists) return;
-        const data = snap.data();
-        const msgs = data.messages || [];
-
-        // Sync human mode state
-        isHumanModeActive = data.human_mode || false;
-
-        // Update header status
-        const statusEl = document.getElementById('aezoon-header-status');
-        if (statusEl) {
-          if (isHumanModeActive) {
-            statusEl.innerHTML = `<span class="aezoon-status-dot" style="background:#10b981;"></span> Support Agent is here`;
-          } else {
-            statusEl.innerHTML = `<span class="aezoon-status-dot"></span> Online — Replies instantly`;
-          }
-        }
-
-        // Check for new human_agent messages
-        if (msgs.length > lastMsgCount) {
-          const newMsgs = msgs.slice(lastMsgCount);
-          newMsgs.forEach(m => {
-            if (m.role === 'human_agent') {
-              appendHumanAgentBubble(m.content, m.time, m.agent_name);
-              if (!chatOpen) {
-                const dot = document.getElementById('aezoon-unread-dot');
-                if (dot) { dot.style.display = 'flex'; }
-              }
-            }
-          });
-          lastMsgCount = msgs.length;
-        }
-      });
     lastMsgCount = chatHistory.length;
+    setInterval(async () => {
+      const data = await fbGet('support_chats', SESSION_ID);
+      if (!data) return;
+      const msgs = data.messages || [];
+      isHumanModeActive = data.human_mode || false;
+      const statusEl = document.getElementById('aezoon-header-status');
+      if (statusEl) statusEl.innerHTML = isHumanModeActive
+        ? `<span class="aezoon-status-dot" style="background:#10b981;"></span> Support Agent is here`
+        : `<span class="aezoon-status-dot"></span> Online — Replies instantly`;
+      if (msgs.length > lastMsgCount) {
+        msgs.slice(lastMsgCount).forEach(m => {
+          if (m.role === 'human_agent') {
+            appendHumanAgentBubble(m.content, m.time, m.agent_name);
+            if (!chatOpen) { const d = document.getElementById('aezoon-unread-dot'); if(d) d.style.display='flex'; }
+          }
+        });
+        lastMsgCount = msgs.length;
+      }
+    }, 8000);
   }
 
-  // ── Save chat to Firestore ────────────────────────────────────
+  // ── Save Chat ─────────────────────────────────────────────────
   async function saveChat() {
-    try {
-      await db.collection('support_chats').doc(SESSION_ID).set({
-        session_id: SESSION_ID,
-        store: WIDGET_CONFIG.storeName,
-        page: window.location.href,
-        updated_at: Date.now(),
-        messages: chatHistory.slice(-40)
-      }, { merge: true });
-    } catch (e) { /* silent */ }
+    await fbSet('support_chats', SESSION_ID, {
+      session_id: SESSION_ID,
+      store: WIDGET_CONFIG.storeName,
+      page: window.location.href,
+      updated_at: Date.now(),
+      messages: chatHistory.slice(-40)
+    });
   }
 
   // ── AI Call ───────────────────────────────────────────────────
@@ -262,9 +277,9 @@ BEHAVIOR:
     input.value = '';
     input.style.height = 'auto';
 
-    const time = getTime();
-    chatHistory.push({ role: 'user', content: text, time });
-    appendBubble('user', text, time, true);
+    const msgTime = getTime();
+    chatHistory.push({ role: 'user', content: text, time: msgTime });
+    appendBubble('user', text, msgTime, true);
 
     // If human agent is active — just save, no AI reply
     if (isHumanModeActive) {
@@ -272,12 +287,6 @@ BEHAVIOR:
       return;
     }
 
-    showTyping();
-    isTyping = true;
-
-    const time = getTime();
-    chatHistory.push({ role: 'user', content: text, time });
-    appendBubble('user', text, time, true);
     showTyping();
     isTyping = true;
 
@@ -347,38 +356,22 @@ BEHAVIOR:
   // ── Request Human Support ─────────────────────────────────────
   window._aezoonRequestHuman = async function () {
     const card = document.getElementById('aezoon-human-card');
-    if (card) {
-      card.innerHTML = `<div style="text-align:center;padding:0.5rem;color:#0ea5e9;font-size:0.85rem;">
-        ⏳ Connecting you to our support team... We'll reply soon!
-      </div>`;
-    }
-
+    if (card) card.innerHTML = `<div style="text-align:center;padding:0.5rem;color:#0ea5e9;font-size:0.85rem;">⏳ Connecting you to our support team...</div>`;
     try {
-      // Save human request to Firestore — dashboard will pick this up
-      await db.collection('support_chats').doc(SESSION_ID).set({
-        session_id: SESSION_ID,
-        store: WIDGET_CONFIG.storeName,
-        page: window.location.href,
-        updated_at: Date.now(),
-        human_requested: true,
-        human_requested_at: Date.now(),
-        messages: chatHistory.slice(-40),
-        unread: 999 // force unread badge
-      }, { merge: true });
-
-      // Also write to a dedicated alerts collection for dashboard
-      await db.collection('support_alerts').add({
-        type: 'human_requested',
-        session_id: SESSION_ID,
-        page: window.location.href,
-        store: WIDGET_CONFIG.storeName,
-        created_at: Date.now(),
-        read: false
+      await fbSet('support_chats', SESSION_ID, {
+        session_id: SESSION_ID, store: WIDGET_CONFIG.storeName,
+        page: window.location.href, updated_at: Date.now(),
+        human_requested: true, human_requested_at: Date.now(),
+        messages: chatHistory.slice(-40), unread: 999
       });
-
+      await fbSet('support_alerts', 'alert_' + Date.now(), {
+        type: 'human_requested', session_id: SESSION_ID,
+        page: window.location.href, store: WIDGET_CONFIG.storeName,
+        created_at: Date.now(), read: false
+      });
       setTimeout(() => {
         if (card) card.remove();
-        appendBubble('bot', '✅ Done! A human agent has been notified. Please wait — we\'ll reply here shortly.', getTime(), true);
+        appendBubble('bot', "✅ Done! A human agent has been notified. Please wait — we'll reply here shortly.", getTime(), true);
       }, 1500);
     } catch (e) {
       appendBubble('bot', '❌ Could not connect. Please try again.', getTime(), true);
@@ -653,9 +646,8 @@ ol.aezoon-list{list-style:decimal;padding-left:20px}
   // ── Init ──────────────────────────────────────────────────────
   function init() {
     buildWidget();
-    loadFirebase(async () => {
-      await loadAIConfig();
-      await loadHistory();
+    loadAIConfig().then(() => loadHistory()).catch(() => {
+      appendBubble('bot', WIDGET_CONFIG.welcomeMsg, getTime(), false);
     });
   }
 

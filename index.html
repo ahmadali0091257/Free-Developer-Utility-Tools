@@ -1920,10 +1920,10 @@ auth.onAuthStateChanged(user => {
     startRealTimeSync();
     startSettingsSync();
     if (typeof startCustomerSync === 'function') startCustomerSync();
-    startTasksSync();
-    startNotesSync();
-    startActivitySync();
-    startSessionLogSync();
+    if (typeof startTasksSync === 'function') startTasksSync();
+    if (typeof startNotesSync === 'function') startNotesSync();
+    if (typeof startActivitySync === 'function') startActivitySync();
+    if (typeof startSessionLogSync === 'function') startSessionLogSync();
     logSession();
     initMultiTabSync();
     startPresence();
