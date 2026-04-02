@@ -7,6 +7,7 @@
 <!-- Firebase Compat SDKs -->
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+<script src="../Dashborad/firebase-init.js"></script>
 <style>
 /* ── THEME VARIABLES (Same as Main) ── */
 :root {
@@ -109,18 +110,20 @@ textarea.inp { resize: vertical; min-height: 150px; }
 
 <script>
 // 1. FIREBASE CONFIGURATION (Must be EXACTLY same as index.html)
-const firebaseConfig = {
-  apiKey: "AIzaSyC_asx16rLu7LmC3d-jRVBESrQvfrceuVo",
-  authDomain: "aezoon-app.firebaseapp.com",
-  projectId: "aezoon-app",
-  storageBucket: "aezoon-app.firebasestorage.app",
-  messagingSenderId: "900605885255",
-  appId: "1:900605885255:web:ecaddb61a88ad344c1ea62",
-  measurementId: "G-BEK3YGHVVH"
-};
-
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+// Firebase already initialized via firebase-init.js
+if (!window.db) {
+  // fallback if loaded standalone
+  const _cfg = {
+    apiKey: "AIzaSyC_asx16rLu7LmC3d-jRVBESrQvfrceuVo",
+    authDomain: "aezoon-app.firebaseapp.com",
+    projectId: "aezoon-app",
+    storageBucket: "aezoon-app.firebasestorage.app",
+    messagingSenderId: "900605885255",
+    appId: "1:900605885255:web:ecaddb61a88ad344c1ea62"
+  };
+  if (!firebase.apps.length) firebase.initializeApp(_cfg);
+}
+const db = window.db || firebase.firestore();
 
 // Load Theme
 document.body.setAttribute('data-theme', localStorage.getItem('aezoon_theme') || 'dark');

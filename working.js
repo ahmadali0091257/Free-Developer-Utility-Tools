@@ -1,19 +1,14 @@
 /**
  * working.js — Aezoon Dashboard Fixes
- * AI Goals system is now in index.html directly (no dependency issues)
+ * Data always comes from GLOBAL_ORDERS / GLOBAL_EXPENSES (Firebase real-time)
+ * getOrders() and getExpenses() are defined in index.html and return those globals
  */
-
-const KEYS = {
-  orders: 'aezoon_orders',
-  expenses: 'aezoon_expenses',
-  goals: 'aezoon_goals'
-};
 
 // ── OTHER FIXES ───────────────────────────────────────────────
 
 function renderSettings() {
   const storageEl = document.getElementById('storageInfo');
-  if (storageEl) storageEl.innerHTML = `<strong>Count:</strong> ${getOrders().length} Orders | ${getExpenses().length} Entries | ${(window._AI_GOALS||[]).length} Goals`;
+  if (storageEl) storageEl.innerHTML = `<strong>Cloud Count:</strong> ${(typeof getOrders==='function'?getOrders():[]).length} Orders | ${(typeof getExpenses==='function'?getExpenses():[]).length} Entries`;
   applyAiConfigToUI();
 }
 
@@ -25,15 +20,13 @@ function deleteExpense(id) {
 }
 
 function confirmClearLocalData() {
-  if (!confirm('Clear all LOCAL data?')) return;
-  localStorage.setItem(KEYS.orders, '[]');
-  localStorage.setItem(KEYS.expenses, '[]');
-  toast('Local data cleared.', 'success');
-  renderDashboard(); renderOrders(); renderExpenses(); renderPending(); renderSettings();
+  toast('Data is stored in Firebase Cloud — use Settings > Cloud Management to delete.', 'warning');
 }
 
 function exportBackup() {
-  const b = new Blob([JSON.stringify({ v:'2.1_Cloud', date:new Date().toISOString(), orders:getOrders(), expenses:getExpenses(), goals:window._AI_GOALS||[] }, null, 2)], { type:'application/json' });
+  const orders = typeof getOrders === 'function' ? getOrders() : [];
+  const expenses = typeof getExpenses === 'function' ? getExpenses() : [];
+  const b = new Blob([JSON.stringify({ v:'2.1_Cloud', date:new Date().toISOString(), orders, expenses }, null, 2)], { type:'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(b);
   a.download = `Aezoon_Backup_${new Date().toISOString().split('T')[0]}.json`;
@@ -57,14 +50,11 @@ function importBackup(e) {
 }
 
 function confirmClearData() {
-  if (!confirm('ARE YOU ABSOLUTELY SURE? This will wipe LOCAL and CLOUD data!')) return;
-  localStorage.setItem(KEYS.orders, JSON.stringify([]));
-  localStorage.setItem(KEYS.expenses, JSON.stringify([]));
+  if (!confirm('ARE YOU ABSOLUTELY SURE? This will wipe ALL CLOUD data!')) return;
   db.collection("orders").get().then(res => res.forEach(d => d.ref.delete()));
   db.collection("expenses").get().then(res => res.forEach(d => d.ref.delete()));
   db.collection("ai_goals").get().then(res => res.forEach(d => d.ref.delete()));
-  toast('All Data Cleared.', 'success');
-  renderDashboard(); renderOrders(); renderExpenses(); renderPending(); renderSettings();
+  toast('All Cloud Data Cleared.', 'success');
 }
 
 function showOrderDetail(id) {
@@ -84,6 +74,7 @@ function showOrderDetail(id) {
       <div class="detail-row" style="grid-column:1/-1"><div class="detail-label">Address</div><div class="detail-val">${o.address||'—'}</div></div>
       ${o.notes?`<div class="detail-row" style="grid-column:1/-1"><div class="detail-label">Notes</div><div class="detail-val">${o.notes}</div></div>`:''}
     </div>
+    ${typeof buildOrderTimeline === 'function' ? `<div style="margin:0.5rem 0 0.8rem;"><div style="font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;margin-bottom:0.4rem;">Status Timeline</div>${buildOrderTimeline(o)}</div>` : ''}
     <div style="display:flex;gap:0.8rem;align-items:center;margin-top:0.5rem;">
       <select class="inp" id="detail_status_${o.id}" style="flex:1;">
         ${['unfulfilled','processing','shipped','delivered','returned','cancel','fake'].map(s=>
@@ -187,12 +178,15 @@ function renderCustomers() {
   const totalRevenue = allCusts.reduce((s,c)=>s+(c.orders||[]).filter(o=>o.status==='delivered').reduce((ss,o)=>ss+(parseFloat(o.total)||0),0),0);
   const repeatCusts = allCusts.filter(c=>(c.orders||[]).length>=2).length;
   const vipCount = allCusts.filter(c=>getCustomerTags(c,allCusts).some(t=>t.key==='vip')).length;
+  const totalExpenses = (typeof getExpenses==='function' ? getExpenses() : []).filter(e=>e.type==='expense').reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+  const cac = allCusts.length > 0 ? (totalExpenses / allCusts.length) : 0;
   const statsEl = document.getElementById('custStats');
   if (statsEl) statsEl.innerHTML = `
     <div class="stat-card c1"><div class="stat-icon" style="color:var(--primary)">👥</div><div class="stat-label">Total Customers</div><div class="stat-val">${allCusts.length}</div><div class="stat-sub">Unique</div></div>
     <div class="stat-card c2"><div class="stat-icon" style="color:var(--success)">🔁</div><div class="stat-label">Repeat</div><div class="stat-val">${repeatCusts}</div><div class="stat-sub">2+ orders</div></div>
     <div class="stat-card c3"><div class="stat-icon" style="color:var(--warning)">⭐</div><div class="stat-label">VIP</div><div class="stat-val">${vipCount}</div><div class="stat-sub">Top spenders</div></div>
     <div class="stat-card c5"><div class="stat-icon" style="color:var(--info)">💰</div><div class="stat-label">Total Revenue</div><div class="stat-val">AED ${fmt(totalRevenue)}</div><div class="stat-sub">All customers</div></div>
+    <div class="stat-card c4"><div class="stat-icon" style="color:var(--danger)">🎯</div><div class="stat-label">Avg CAC</div><div class="stat-val">AED ${fmt(cac)}</div><div class="stat-sub">Cost per customer</div></div>
   `;
   const tbody = document.getElementById('custBody');
   if (!tbody) return;
@@ -201,6 +195,10 @@ function renderCustomers() {
     const del = (c.orders||[]).filter(o=>o.status==='delivered');
     const spent = del.reduce((s,o)=>s+(parseFloat(o.total)||0),0);
     const profit = del.reduce((s,o)=>s+(parseFloat(o.profit_per)||0)*(parseFloat(o.qty)||1),0);
+    const avgOrder = del.length ? spent / del.length : 0;
+    const clvScore = spent + (del.length * avgOrder * 0.3); // simple CLV estimate
+    const clvCls = clvScore >= 500 ? 'clv-high' : clvScore >= 150 ? 'clv-mid' : 'clv-low';
+    const clvLabel = clvScore >= 500 ? '⭐ High' : clvScore >= 150 ? '📈 Mid' : '📉 Low';
     const tags = getCustomerTags(c, allCusts);
     const tagsHtml = tags.map(t=>`<span class="cust-tag ${t.cls}">${t.label}</span>`).join(' ');
     const last = (c.orders||[]).sort((a,b)=>(b.date||'').localeCompare(a.date||''))[0];
@@ -212,8 +210,10 @@ function renderCustomers() {
       <td style="text-align:center;"><strong>${(c.orders||[]).length}</strong></td>
       <td style="color:var(--success);font-weight:600;">AED ${fmt(spent)}</td>
       <td style="color:var(--primary);font-weight:600;">AED ${fmt(profit)}</td>
+      <td><span class="clv-badge ${clvCls}" title="CLV: AED ${fmt(clvScore)}">${clvLabel}</span><div style="font-size:0.7rem;color:var(--muted);margin-top:0.2rem;">AED ${fmt(clvScore)}</div></td>
       <td><div style="display:flex;flex-wrap:wrap;gap:0.3rem;">${tagsHtml||'<span style="color:var(--muted);font-size:0.75rem;">—</span>'}</div></td>
       <td onclick="event.stopPropagation()"><div style="display:flex;gap:0.4rem;">
+        ${c.phone ? `<a href="https://wa.me/${c.phone.replace(/[^0-9]/g,'')}" target="_blank" class="btn btn-outline btn-sm" title="WhatsApp" style="color:#25d366;border-color:#25d366;">💬</a>` : ''}
         <button class="btn btn-outline btn-sm" onclick="openCustomerModal('${c.id}')">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="deleteCustomer('${c.id}')">🗑</button>
       </div></td>
@@ -234,7 +234,7 @@ function showCustomerDetail(id) {
     <div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:1rem;">${tags.map(t=>`<span class="cust-tag ${t.cls}">${t.label}</span>`).join(' ')}</div>
     <div class="order-detail-grid" style="margin-bottom:1.2rem;">
       <div class="detail-row"><div class="detail-label">Name</div><div class="detail-val">${c.name||'—'}</div></div>
-      <div class="detail-row"><div class="detail-label">Phone</div><div class="detail-val">${c.phone||'—'}</div></div>
+      <div class="detail-row"><div class="detail-label">Phone</div><div class="detail-val">${c.phone||'—'} ${c.phone?`<a href="https://wa.me/${c.phone.replace(/[^0-9]/g,'')}" target="_blank" style="color:#25d366;font-size:0.8rem;margin-left:0.4rem;">💬 WhatsApp</a>`:''}</div></div>
       <div class="detail-row"><div class="detail-label">City</div><div class="detail-val">${c.city||'—'}</div></div>
       <div class="detail-row"><div class="detail-label">Email</div><div class="detail-val">${c.email||'—'}</div></div>
       <div class="detail-row"><div class="detail-label">Total Orders</div><div class="detail-val" style="color:var(--primary)">${(c.orders||[]).length}</div></div>
@@ -284,7 +284,11 @@ function saveCustomer() {
   const docId = editId && !editId.startsWith('auto_') ? editId : 'c_'+Date.now();
   data.created_at = editId?(MANUAL_CUSTOMERS.find(c=>c.id===editId)?.created_at||Date.now()):Date.now();
   db.collection("customers").doc(docId).set(data)
-    .then(()=>{ closeModal('customerModal'); toast(editId?'Updated!':'Added!','success'); })
+    .then(()=>{
+      closeModal('customerModal');
+      toast(editId?'Updated!':'Added!','success');
+      if (!editId) logActivity('customer_added', `${name} · ${phone} · ${data.city||'—'}`);
+    })
     .catch(err=>toast('Error: '+err.message,'error'));
 }
 

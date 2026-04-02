@@ -8,6 +8,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="firebase-init.js"></script>
 <style>
 :root {
   --bg:#0f172a; --surface:#1e293b; --surface2:#334155; --surface3:#475569;
@@ -353,18 +354,8 @@ tr:last-child td{border-bottom:none;}
 <div id="toast"></div>
 
 <script>
-// ── FIREBASE — separate collection prefix "personal_" ─────────
-const firebaseConfig = {
-  apiKey: "AIzaSyC_asx16rLu7LmC3d-jRVBESrQvfrceuVo",
-  authDomain: "aezoon-app.firebaseapp.com",
-  projectId: "aezoon-app",
-  storageBucket: "aezoon-app.firebasestorage.app",
-  messagingSenderId: "900605885255",
-  appId: "1:900605885255:web:ecaddb61a88ad344c1ea62"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
+// ── FIREBASE — initialized via firebase-init.js ───────────────
+// db and auth are already available globally
 
 // Theme
 document.body.setAttribute('data-theme', localStorage.getItem('aezoon_theme') || 'dark');
