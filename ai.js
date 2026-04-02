@@ -67,7 +67,7 @@ async function loadAiHistories() {
 async function saveAiHistories() {
   try {
     const payload = { updatedAt: Date.now() };
-    Object.keys(AI_AGENTS).forEach(id => { payload[id] = AI_HISTORIES[id].slice(-30); });
+    Object.keys(AI_AGENTS).forEach(id => { payload[id] = AI_HISTORIES[id].slice(-20); });
     await db.collection("ai_team_history").doc("chats").set(payload);
   } catch(e) { console.log('History save error:', e); }
 }
@@ -322,11 +322,11 @@ async function checkRoastSchedule() {
   const todayKey = now.toISOString().split('T')[0];
   for (const slot of ROAST_SCHEDULE) {
     if (h === slot.hour && m === slot.minute) {
-      const firebaseKey = `roast_auto_${todayKey}_${slot.hour}`;
+      const lsKey = `roast_auto_${todayKey}_${slot.hour}`;
+      // Check localStorage first — no Firestore read needed
+      if (localStorage.getItem(lsKey)) return;
+      localStorage.setItem(lsKey, '1');
       try {
-        const snap = await db.collection("roast_auto_log").doc(firebaseKey).get();
-        if (snap.exists) return;
-        await db.collection("roast_auto_log").doc(firebaseKey).set({ sentAt: Date.now(), slot: slot.label });
         await roastBotAutoMessage(slot.label);
       } catch(e) { console.log('Roast schedule error:', e); }
     }

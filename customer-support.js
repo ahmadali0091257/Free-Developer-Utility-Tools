@@ -25,10 +25,19 @@ function initCustomerSupport() {
   loadSupportConfig();
 }
 
-// ── Real-time Firestore sync ──────────────────────────────────
+// ── Real-time Firestore sync — limit 7, load more on demand ──
+let CS_CHATS_LIMIT = 7;
+let CS_CHATS_TOTAL = 0;
+
 function startSupportChatsSync() {
+  loadSupportChats();
+}
+
+function loadSupportChats(limit) {
+  limit = limit || CS_CHATS_LIMIT;
   db.collection('support_chats')
     .orderBy('updated_at', 'desc')
+    .limit(limit)
     .onSnapshot(snap => {
       CS_CHATS = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       if (document.getElementById('page-support')?.classList.contains('active')) {
@@ -40,6 +49,27 @@ function startSupportChatsSync() {
         }
       }
     }, err => console.log('Support sync error:', err));
+  // Get total count separately (one read)
+  db.collection('support_chats').get().then(s => {
+    CS_CHATS_TOTAL = s.size;
+    renderLoadMoreBtn();
+  }).catch(() => {});
+}
+
+function loadMoreChats() {
+  CS_CHATS_LIMIT += 10;
+  loadSupportChats(CS_CHATS_LIMIT);
+}
+
+function renderLoadMoreBtn() {
+  const el = document.getElementById('csLoadMoreBtn');
+  if (!el) return;
+  if (CS_CHATS_TOTAL > CS_CHATS.length) {
+    el.style.display = 'block';
+    el.textContent = `Load More (${CS_CHATS_TOTAL - CS_CHATS.length} more)`;
+  } else {
+    el.style.display = 'none';
+  }
 }
 
 async function loadSupportConfig() {

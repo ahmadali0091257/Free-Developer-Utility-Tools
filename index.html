@@ -1107,6 +1107,7 @@ tr:last-child td { border-bottom:none; }
         <div class="cs-chat-list" id="csSidebarList">
           <div style="padding:2rem;text-align:center;color:var(--muted);font-size:0.85rem;">Loading chats...</div>
         </div>
+        <button id="csLoadMoreBtn" onclick="loadMoreChats()" style="display:none;width:100%;padding:0.7rem;background:var(--surface2);border:none;border-top:1px solid var(--border);color:var(--primary);font-size:0.8rem;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.15s;" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background='var(--surface2)'">Load More</button>
       </div>
 
       <!-- RIGHT: Tabs -->
@@ -3239,11 +3240,11 @@ function startPresence() {
   // Initial heartbeat
   heartbeat('dashboard');
 
-  // Heartbeat every 15s
+  // Heartbeat every 60s (reduced from 15s to save Firebase writes)
   _presenceInterval = setInterval(() => {
     const activePage = document.querySelector('.nav-item.active')?.id?.replace('nav-','') || 'dashboard';
     heartbeat(activePage);
-  }, 15000);
+  }, 60000);
 
   // Mark offline on close
   window.addEventListener('beforeunload', () => {

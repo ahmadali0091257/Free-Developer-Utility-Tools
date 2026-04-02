@@ -10,14 +10,20 @@
 let KB_CARDS = [];
 let KB_EDITING_ID = null;
 
-// ── Firestore Sync ────────────────────────────────────────────
+// ── Firestore Sync — get() instead of onSnapshot to save reads ──
 function startKBSync() {
-  db.collection('support_kb').orderBy('created_at', 'asc').onSnapshot(snap => {
+  fetchKBCards();
+}
+
+async function fetchKBCards() {
+  try {
+    const snap = await db.collection('support_kb').orderBy('created_at', 'asc').get();
     KB_CARDS = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    if (document.getElementById('csTab_kb')?.style.display !== 'none') renderKBCards();
-    // Also push to widget config so it can use KB
-    syncKBToConfig();
-  }, err => console.log('KB sync error:', err));
+    if (document.getElementById('csTab_kb')?.style.display !== 'none') {
+      renderKBCards();
+      renderKBStats();
+    }
+  } catch (e) { console.log('KB fetch error:', e); }
 }
 
 async function syncKBToConfig() {
@@ -147,6 +153,8 @@ async function saveKBCard() {
 
   try {
     await db.collection('support_kb').doc(docId).set(data, { merge: true });
+    await fetchKBCards(); // refresh after save
+    await syncKBToConfig();
     closeKBModal();
     toast(KB_EDITING_ID ? 'Card updated!' : 'Card added!', 'success');
   } catch (e) { toast('Error: ' + e.message, 'error'); }
@@ -156,7 +164,7 @@ async function saveKBCard() {
 function deleteKBCard(id) {
   if (!confirm('Delete this knowledge card?')) return;
   db.collection('support_kb').doc(id).delete()
-    .then(() => toast('Deleted', 'success'))
+    .then(() => { fetchKBCards(); syncKBToConfig(); toast('Deleted', 'success'); })
     .catch(e => toast('Error: ' + e.message, 'error'));
 }
 
