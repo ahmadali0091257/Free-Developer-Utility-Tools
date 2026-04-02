@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="tasks.css">
 <link rel="stylesheet" href="customer-support.css">
 <link rel="stylesheet" href="animation.css">
+<link rel="stylesheet" href="knowledge-base.css">
 <style>
 /* ── THEME VARIABLES ── */
 :root {
@@ -1075,7 +1076,8 @@ tr:last-child td { border-bottom:none; }
           <button class="cs-tab-btn active" onclick="csSupportTabSwitch('chats')">💬 Chats</button>
           <button class="cs-tab-btn" onclick="csSupportTabSwitch('settings')">⚙️ Settings</button>
           <button class="cs-tab-btn" onclick="csSupportTabSwitch('prompt')">✨ Prompt AI</button>
-          <button class="cs-tab-btn" onclick="csSupportTabSwitch('guide')">📖 Shopify Guide</button>
+          <button class="cs-tab-btn" onclick="switchToKBTab()">🧠 Knowledge Base</button>
+          <button class="cs-tab-btn" onclick="csSupportTabSwitch('guide')">📖 Guide</button>
         </div>
 
         <!-- CHATS TAB -->
@@ -1092,11 +1094,34 @@ tr:last-child td { border-bottom:none; }
                 <div class="cs-chat-header-name" id="csChatHeaderName">Visitor</div>
                 <div class="cs-chat-header-sub" id="csChatHeaderSub"></div>
               </div>
-              <button class="btn btn-danger btn-sm" onclick="deleteSupportChat()">🗑 Delete</button>
+              <div style="display:flex;gap:0.5rem;align-items:center;">
+                <div class="cs-human-mode-toggle" id="csHumanModeToggle">
+                  <span class="cs-hm-label" id="csHumanModeLabel">🤖 AI Mode</span>
+                  <label class="cs-hm-switch">
+                    <input type="checkbox" id="csHumanModeCheck" onchange="toggleHumanMode(this.checked)">
+                    <span class="cs-hm-slider"></span>
+                  </label>
+                </div>
+                <button class="btn btn-danger btn-sm" onclick="deleteSupportChat()">🗑</button>
+              </div>
             </div>
             <!-- Tag bar -->
             <div class="cs-tag-bar" id="csChatTagBar"></div>
+            <!-- Messages -->
             <div class="cs-chat-messages" id="csChatMessages"></div>
+            <!-- Human Reply Input -->
+            <div class="cs-human-reply-area" id="csHumanReplyArea" style="display:none;">
+              <div class="cs-human-reply-badge">👨‍💼 You (Support Agent)</div>
+              <div class="cs-human-reply-row">
+                <textarea class="cs-human-reply-inp" id="csHumanReplyInp"
+                  placeholder="Type your reply to the visitor..."
+                  onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendHumanReply()}"
+                  oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
+                <button class="cs-human-send-btn" onclick="sendHumanReply()">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1149,19 +1174,47 @@ tr:last-child td { border-bottom:none; }
           </div>
         </div>
 
-        <!-- PROMPT AI TAB -->
-        <div class="cs-tab-panel" id="csTab_prompt" style="display:none;">
-          <!-- Top actions bar -->
-          <div class="cs-prompt-actions">
-            <div style="font-size:0.82rem;color:var(--muted);">
-              ✨ AI tumhara system prompt analyze aur improve karega
-            </div>
-            <div style="display:flex;align-items:center;gap:0.6rem;">
-              <span class="cs-live-save-indicator" id="csPromptLiveSave"></span>
-              <button class="btn btn-outline btn-sm" onclick="clearPromptChat()" style="color:var(--danger);border-color:var(--danger);">🗑 Clear</button>
+        <!-- KNOWLEDGE BASE TAB -->
+        <div class="cs-tab-panel" id="csTab_kb" style="display:none;">
+          <div class="kb-header-bar">
+            <div id="kbStats" class="kb-stats-row"></div>
+            <div class="kb-search-add">
+              <input class="kb-search-inp" id="kbSearchInp" placeholder="🔍 Search cards..." oninput="renderKBCards()">
+              <button class="btn btn-primary btn-sm" onclick="openKBModal()">➕ Add Card</button>
             </div>
           </div>
-          <!-- File upload area -->
+          <div class="kb-scroll-area">
+            <div class="kb-cards-grid" id="kbCardsGrid"></div>
+            <div class="kb-empty" id="kbEmptyState" style="display:none;">
+              <div class="kb-empty-icon">🧠</div>
+              <div class="kb-empty-title">No knowledge cards yet</div>
+              <div class="kb-empty-sub">Add cards for Shipping, Returns, Products etc.<br>AI will automatically use them to answer customers.</div>
+              <button class="btn btn-primary" style="margin-top:0.8rem;" onclick="openKBModal()">➕ Add First Card</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROMPT AI TAB — IMPROVED -->
+        <div class="cs-tab-panel" id="csTab_prompt" style="display:none;">
+          <!-- Version history bar -->
+          <div class="pai-version-bar">
+            <span class="pai-version-label">📜 Versions:</span>
+            <div id="paiVersionChips" style="display:flex;gap:0.4rem;flex-wrap:wrap;"></div>
+            <span style="font-size:0.72rem;color:var(--muted);margin-left:auto;" id="csPromptLiveSave"></span>
+          </div>
+          <!-- Quick action prompts -->
+          <div class="pai-quick-actions">
+            <span style="font-size:0.72rem;color:var(--muted);font-weight:600;align-self:center;">Quick:</span>
+            <button class="pai-quick-btn" onclick="paiQuickAction('analyze')">🔍 Analyze Current</button>
+            <button class="pai-quick-btn" onclick="paiQuickAction('improve')">✨ Improve</button>
+            <button class="pai-quick-btn" onclick="paiQuickAction('shorten')">✂️ Shorten</button>
+            <button class="pai-quick-btn" onclick="paiQuickAction('tone_formal')">🎩 Formal Tone</button>
+            <button class="pai-quick-btn" onclick="paiQuickAction('tone_friendly')">😊 Friendly Tone</button>
+            <button class="pai-quick-btn" onclick="paiQuickAction('add_kb')">🧠 Add KB Info</button>
+            <button class="pai-quick-btn" onclick="paiQuickAction('multilang')">🌐 Multi-language</button>
+            <button class="btn btn-outline btn-sm" onclick="clearPromptChat()" style="color:var(--danger);border-color:var(--danger);margin-left:auto;">🗑 Clear</button>
+          </div>
+          <!-- File upload -->
           <div class="cs-upload-area">
             <label class="cs-upload-btn" for="csFileUpload">
               📂 Upload Files
@@ -1185,12 +1238,61 @@ tr:last-child td { border-bottom:none; }
 
         <!-- GUIDE TAB -->
         <div class="cs-tab-panel" id="csTab_guide" style="display:none;">
-          <div id="csShopifyGuide" style="display:flex;flex-direction:column;gap:1rem;"></div>
+          <div id="csShopifyGuide" style="display:flex;flex-direction:column;gap:1rem;overflow-y:auto;padding:1.5rem;"></div>
         </div>
 
       </div>
     </div>
   </div>
+
+<!-- KNOWLEDGE BASE CARD MODAL -->
+<div class="modal-bg" id="kbModal">
+  <div class="modal" style="max-width:580px;">
+    <div class="modal-header">
+      <h3>➕ Add Knowledge Card</h3>
+      <button class="modal-close" onclick="closeKBModal()">✕</button>
+    </div>
+    <div class="kb-modal-body">
+      <!-- Templates -->
+      <div class="kb-templates-section">
+        <span class="kb-templates-label">⚡ Quick Templates</span>
+        <div class="kb-templates-list" id="kbTemplatesList"></div>
+      </div>
+      <!-- Icon + Name -->
+      <div class="kb-icon-name-row">
+        <div class="form-row" style="margin:0;">
+          <label>Icon</label>
+          <input class="inp kb-icon-input" id="kb_icon" placeholder="📄" maxlength="2">
+        </div>
+        <div class="form-row" style="flex:1;margin:0;">
+          <label>Card Name *</label>
+          <input class="inp" id="kb_name" placeholder="e.g. Shipping Policy, Return Policy...">
+        </div>
+      </div>
+      <!-- Keywords -->
+      <div class="kb-keywords-row">
+        <div class="kb-keywords-header">
+          <label>Keywords (comma separated) *</label>
+          <button class="btn btn-outline btn-sm" id="kbGenKwBtn" onclick="kbAiGenerateKeywords()">✨ Auto Keywords</button>
+        </div>
+        <input class="inp" id="kb_keywords" placeholder="shipping, delivery, kab aayega, order time, dispatch...">
+        <div class="kb-keywords-hint">💡 Include English + Roman Urdu + common questions. AI uses these to find the right card.</div>
+      </div>
+      <!-- Content -->
+      <div class="kb-content-row">
+        <div class="kb-content-header">
+          <label>Content *</label>
+          <button class="btn btn-outline btn-sm" id="kbImproveBtn" onclick="kbAiImproveContent()">✨ Improve</button>
+        </div>
+        <textarea class="inp" id="kb_content" rows="6" placeholder="Write the information AI should use to answer customer questions about this topic..."></textarea>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-outline" onclick="closeKBModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveKBCard()">💾 Save Card</button>
+    </div>
+  </div>
+</div>
 
 <!-- PROMPT NOTEPAD MODAL -->
 <div class="pn-overlay" id="promptNotepadOverlay" onclick="if(event.target===this)closePromptNotepad()">
@@ -3294,6 +3396,20 @@ function pnAiTranslate() { /* overridden by customer-support.js */ }
 function pnAcceptSuggestion() { /* overridden by customer-support.js */ }
 function pnRejectSuggestion() { /* overridden by customer-support.js */ }
 function pnToggleFullscreen() { /* overridden by customer-support.js */ }
+// KB stubs
+function switchToKBTab() {}
+function openKBModal(id) {}
+function closeKBModal() {}
+function saveKBCard() {}
+function deleteKBCard(id) {}
+function renderKBCards() {}
+function kbAiGenerateKeywords() {}
+function kbAiImproveContent() {}
+function loadKBTemplate(i) {}
+function paiQuickAction(a) {}
+function paiRestoreVersion(i) {}
+function toggleHumanMode(v) {}
+function sendHumanReply() {}
 function exportBackup() { /* overridden by working.js */ }
 function importBackup(e) { /* overridden by working.js */ }
 function confirmClearLocalData() { /* overridden by working.js */ }
@@ -3305,6 +3421,7 @@ function confirmClearData() { /* overridden by working.js */ }
 <script src="working.js"></script>
 <script src="ai.js"></script>
 <script src="customer-support.js"></script>
+<script src="knowledge-base.js"></script>
 <script>startLiveClock();</script>
 </body>
 </html>

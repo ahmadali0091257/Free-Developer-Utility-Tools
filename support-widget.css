@@ -514,3 +514,18 @@ ol.aezoon-list li::marker { color: #0ea5e9; font-weight: 700; }
   transition: background 0.15s;
 }
 .aezoon-human-no:hover { background: #e2e8f0; }
+
+/* ── HUMAN AGENT BUBBLE (widget side) ── */
+.aezoon-agent-bubble {
+  background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(5,150,105,0.05)) !important;
+  border: 1.5px solid rgba(16,185,129,0.35) !important;
+  color: #1e293b !important;
+}
+.aezoon-agent-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #10b981;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}

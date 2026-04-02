@@ -19,6 +19,7 @@ function initCustomerSupport() {
     startSupportChatsSync();
     startAlertsSync();
     requestNotifPermission();
+    if (typeof startKBSync === 'function') startKBSync();
     CS_INIT_DONE = true;
   }
   loadSupportConfig();
@@ -120,7 +121,9 @@ function renderSupportChatDetail(chat) {
   const msgs = chat.messages || [];
   const shortId = (chat.session_id || '').replace('aezoon_sess_', '#').substring(0, 14);
   document.getElementById('csChatHeaderName').textContent = 'Visitor ' + shortId;
-  document.getElementById('csChatHeaderSub').textContent = (chat.page || 'Unknown page') + ' · ' + msgs.length + ' messages';
+  document.getElementById('csChatHeaderSub').textContent =
+    (chat.page || 'Unknown page') + ' · ' + msgs.length + ' messages' +
+    (chat.human_mode ? ' · 👨‍💼 Human Active' : '');
 
   // Tag buttons
   const tagBar = document.getElementById('csChatTagBar');
@@ -137,19 +140,42 @@ function renderSupportChatDetail(chat) {
   const container = document.getElementById('csChatMessages');
   if (!container) return;
 
-  // Human requested banner
   const humanBanner = chat.human_requested
-    ? `<div class="cs-human-alert-banner">🆘 This visitor requested human support — please reply below</div>`
+    ? `<div class="cs-human-alert-banner">🆘 This visitor requested human support — reply below</div>`
     : '';
 
   container.innerHTML = humanBanner + msgs.map(m => {
     const isUser = m.role === 'user';
-    const formatted = (m.content || '').replace(/\[\[HUMAN_NEEDED\]\]/g, '').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+    const isAgent = m.role === 'human_agent';
+    const formatted = (m.content || '')
+      .replace(/\[\[HUMAN_NEEDED\]\]/g, '')
+      .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+      .replace(/\n/g, '<br>');
+
+    if (isAgent) {
+      return `<div class="cs-msg-row user">
+        <div class="cs-bubble cs-bubble-agent">
+          <div class="cs-agent-badge">👨‍💼 ${m.agent_name || 'Support Agent'}</div>
+          ${formatted}
+          <div class="cs-bubble-time">${m.time || ''}</div>
+        </div>
+      </div>`;
+    }
     return `<div class="cs-msg-row ${isUser ? 'user' : 'bot'}">
       <div class="cs-bubble ${isUser ? 'user' : 'bot'}">${formatted}<div class="cs-bubble-time">${m.time || ''}</div></div>
     </div>`;
   }).join('');
   container.scrollTop = container.scrollHeight;
+
+  // Sync human mode toggle
+  const check = document.getElementById('csHumanModeCheck');
+  const replyArea = document.getElementById('csHumanReplyArea');
+  const label = document.getElementById('csHumanModeLabel');
+  const isHuman = chat.human_mode || false;
+  CS_HUMAN_MODE = isHuman;
+  if (check) check.checked = isHuman;
+  if (label) label.textContent = isHuman ? '👨‍💼 Human Mode' : '🤖 AI Mode';
+  if (replyArea) replyArea.style.display = isHuman ? 'flex' : 'none';
 }
 
 function setChatTag(tag) {
@@ -991,4 +1017,181 @@ function updateSupportNavBadge() {
   const count = CS_ALERTS.length;
   badge.textContent = count;
   badge.style.display = count > 0 ? 'inline-flex' : 'none';
+}
+
+// ══════════════════════════════════════════════════════════════
+// ── PROMPT AI — VERSION HISTORY + QUICK ACTIONS + KB AWARE ───
+// ══════════════════════════════════════════════════════════════
+
+let PAI_VERSIONS = []; // { label, prompt, savedAt }
+const PAI_MAX_VERSIONS = 10;
+
+// Save a version snapshot
+function paiSaveVersion(prompt) {
+  if (!prompt.trim()) return;
+  // Don't save duplicate
+  if (PAI_VERSIONS.length && PAI_VERSIONS[0].prompt === prompt) return;
+  PAI_VERSIONS.unshift({
+    label: 'v' + (PAI_VERSIONS.length + 1),
+    prompt,
+    savedAt: Date.now()
+  });
+  if (PAI_VERSIONS.length > PAI_MAX_VERSIONS) PAI_VERSIONS.pop();
+  renderPaiVersions();
+}
+
+function renderPaiVersions() {
+  const el = document.getElementById('paiVersionChips');
+  if (!el) return;
+  if (!PAI_VERSIONS.length) {
+    el.innerHTML = '<span style="font-size:0.72rem;color:var(--muted);">No versions yet</span>';
+    return;
+  }
+  el.innerHTML = PAI_VERSIONS.map((v, i) => `
+    <button class="pai-version-chip ${i === 0 ? 'current' : ''}"
+      onclick="paiRestoreVersion(${i})"
+      title="Saved: ${new Date(v.savedAt).toLocaleTimeString()}">${v.label}</button>`).join('');
+}
+
+function paiRestoreVersion(idx) {
+  const v = PAI_VERSIONS[idx];
+  if (!v) return;
+  if (!confirm(`Restore ${v.label}? Current prompt will be replaced.`)) return;
+  const el = document.getElementById('cs_system_prompt');
+  if (el) el.value = v.prompt;
+  updatePromptPreviewCard(v.prompt);
+  liveUpdatePrompt(v.prompt);
+  toast(`${v.label} restored!`, 'success');
+  // Move to top
+  PAI_VERSIONS.splice(idx, 1);
+  PAI_VERSIONS.unshift(v);
+  renderPaiVersions();
+}
+
+// ── Quick Actions ─────────────────────────────────────────────
+async function paiQuickAction(action) {
+  const currentPrompt = document.getElementById('cs_system_prompt')?.value?.trim() || '';
+  const kbSummary = typeof KB_CARDS !== 'undefined' && KB_CARDS.length
+    ? '\n\nKnowledge Base cards available: ' + KB_CARDS.map(c => c.name).join(', ')
+    : '';
+
+  const messages = {
+    analyze: `Analyze this system prompt and tell me:\n1. What's good about it\n2. What's missing\n3. What should be improved\n\nPrompt:\n"${currentPrompt || '(empty)'}"${kbSummary}`,
+    improve: `Improve this system prompt. Make it more effective for customer support. Keep it under 250 words.\n\nCurrent:\n"${currentPrompt || '(empty)'}"${kbSummary}\n\nReturn the improved prompt in \`\`\`prompt\n...\`\`\` block.`,
+    shorten: `Shorten this system prompt to under 120 words while keeping all key info.\n\nCurrent:\n"${currentPrompt}"\n\nReturn in \`\`\`prompt\n...\`\`\` block.`,
+    tone_formal: `Rewrite this system prompt to use a formal, professional tone.\n\nCurrent:\n"${currentPrompt}"\n\nReturn in \`\`\`prompt\n...\`\`\` block.`,
+    tone_friendly: `Rewrite this system prompt to use a warm, friendly, conversational tone.\n\nCurrent:\n"${currentPrompt}"\n\nReturn in \`\`\`prompt\n...\`\`\` block.`,
+    add_kb: `I have these Knowledge Base cards: ${kbSummary || 'none yet'}.\n\nUpdate this system prompt to tell the AI to use the knowledge base cards when answering questions.\n\nCurrent prompt:\n"${currentPrompt}"\n\nReturn in \`\`\`prompt\n...\`\`\` block.`,
+    multilang: `Update this system prompt to make the AI detect and respond in the user's language (English, Urdu, Roman Urdu, Arabic etc.).\n\nCurrent:\n"${currentPrompt}"\n\nReturn in \`\`\`prompt\n...\`\`\` block.`
+  };
+
+  const msg = messages[action];
+  if (!msg) return;
+
+  // Save current version before change
+  if (currentPrompt) paiSaveVersion(currentPrompt);
+
+  // Send as message
+  const input = document.getElementById('csPromptInput');
+  if (input) input.value = '';
+  await sendPromptUpgradeMsgInternal(msg, false);
+}
+
+// Override callPromptUpgradeAI to be KB-aware and save versions
+const _origCallPromptUpgradeAI = callPromptUpgradeAI;
+async function callPromptUpgradeAI(userMsg) {
+  const result = await _origCallPromptUpgradeAI(userMsg);
+  // If a new prompt was generated, save version
+  const promptMatch = result.match(/```prompt\n([\s\S]*?)```/);
+  if (promptMatch) {
+    const currentPrompt = document.getElementById('cs_system_prompt')?.value?.trim() || '';
+    if (currentPrompt) paiSaveVersion(currentPrompt);
+  }
+  return result;
+}
+
+// Also add KB stubs for index.html
+function switchToKBTab() { /* overridden by knowledge-base.js */ }
+function openKBModal(id) { /* overridden by knowledge-base.js */ }
+function closeKBModal() { /* overridden by knowledge-base.js */ }
+function saveKBCard() { /* overridden by knowledge-base.js */ }
+function deleteKBCard(id) { /* overridden by knowledge-base.js */ }
+function renderKBCards() { /* overridden by knowledge-base.js */ }
+function renderKBStats() { /* overridden by knowledge-base.js */ }
+function renderKBTemplates() { /* overridden by knowledge-base.js */ }
+function kbAiGenerateKeywords() { /* overridden by knowledge-base.js */ }
+function kbAiImproveContent() { /* overridden by knowledge-base.js */ }
+function loadKBTemplate(i) { /* overridden by knowledge-base.js */ }
+
+// ══════════════════════════════════════════════════════════════
+// ── HUMAN REPLY SYSTEM ────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+
+let CS_HUMAN_MODE = false; // per-chat human mode state
+
+// ── Toggle Human Mode ─────────────────────────────────────────
+function toggleHumanMode(enabled) {
+  CS_HUMAN_MODE = enabled;
+  const label = document.getElementById('csHumanModeLabel');
+  const replyArea = document.getElementById('csHumanReplyArea');
+
+  if (enabled) {
+    if (label) label.textContent = '👨‍💼 Human Mode';
+    if (replyArea) replyArea.style.display = 'flex';
+    setTimeout(() => document.getElementById('csHumanReplyInp')?.focus(), 100);
+    const chat = CS_CHATS.find(c => c.session_id === CS_SELECTED_SESSION);
+    if (chat) {
+      db.collection('support_chats').doc(chat.id)
+        .update({ human_mode: true, human_mode_at: Date.now() })
+        .catch(() => {});
+    }
+    toast('Human mode ON — AI paused for this chat', 'success');
+  } else {
+    if (label) label.textContent = '🤖 AI Mode';
+    if (replyArea) replyArea.style.display = 'none';
+    const chat = CS_CHATS.find(c => c.session_id === CS_SELECTED_SESSION);
+    if (chat) {
+      db.collection('support_chats').doc(chat.id)
+        .update({ human_mode: false })
+        .catch(() => {});
+    }
+    toast('AI mode restored', 'success');
+  }
+}
+
+// ── Send Human Reply ──────────────────────────────────────────
+async function sendHumanReply() {
+  const inp = document.getElementById('csHumanReplyInp');
+  const text = inp?.value.trim();
+  if (!text) return;
+  if (!CS_SELECTED_SESSION) return;
+
+  inp.value = '';
+  inp.style.height = 'auto';
+
+  const chat = CS_CHATS.find(c => c.session_id === CS_SELECTED_SESSION);
+  if (!chat) return;
+
+  const time = getCSTime();
+  const newMsg = {
+    role: 'human_agent',
+    content: text,
+    time,
+    agent_name: 'Support Agent'
+  };
+
+  const updatedMsgs = [...(chat.messages || []), newMsg];
+
+  try {
+    await db.collection('support_chats').doc(chat.id).update({
+      messages: updatedMsgs,
+      updated_at: Date.now(),
+      unread: 0,
+      last_human_reply: Date.now()
+    });
+    toast('Reply sent ✓', 'success');
+  } catch (e) {
+    toast('Error: ' + e.message, 'error');
+    inp.value = text;
+  }
 }

@@ -69,6 +69,9 @@
     try {
       const snap = await db.collection('support_settings').doc('config').get();
       if (snap.exists) AI_CONFIG = { ...AI_CONFIG, ...snap.data() };
+      // Also load Knowledge Base
+      const kbSnap = await db.collection('support_settings').doc('knowledge_base').get();
+      if (kbSnap.exists) AI_CONFIG.kb_cards = kbSnap.data().cards || [];
     } catch (e) { console.log('Aezoon: config load error', e); }
   }
 
@@ -77,15 +80,59 @@
     try {
       const snap = await db.collection('support_chats').doc(SESSION_ID).get();
       if (snap.exists) {
-        chatHistory = snap.data().messages || [];
+        const data = snap.data();
+        chatHistory = data.messages || [];
         chatHistory.forEach(m => appendBubble(m.role, m.content, m.time, false));
+        // Start real-time listener for human replies
+        startChatListener();
       } else {
         appendBubble('bot', AI_CONFIG.welcome_msg || WIDGET_CONFIG.welcomeMsg, getTime(), false);
+        startChatListener();
       }
       scrollBottom();
     } catch (e) {
       appendBubble('bot', WIDGET_CONFIG.welcomeMsg, getTime(), false);
     }
+  }
+
+  // ── Real-time listener for human replies ──────────────────────
+  let lastMsgCount = 0;
+  function startChatListener() {
+    db.collection('support_chats').doc(SESSION_ID)
+      .onSnapshot(snap => {
+        if (!snap.exists) return;
+        const data = snap.data();
+        const msgs = data.messages || [];
+
+        // Sync human mode state
+        isHumanModeActive = data.human_mode || false;
+
+        // Update header status
+        const statusEl = document.getElementById('aezoon-header-status');
+        if (statusEl) {
+          if (isHumanModeActive) {
+            statusEl.innerHTML = `<span class="aezoon-status-dot" style="background:#10b981;"></span> Support Agent is here`;
+          } else {
+            statusEl.innerHTML = `<span class="aezoon-status-dot"></span> Online — Replies instantly`;
+          }
+        }
+
+        // Check for new human_agent messages
+        if (msgs.length > lastMsgCount) {
+          const newMsgs = msgs.slice(lastMsgCount);
+          newMsgs.forEach(m => {
+            if (m.role === 'human_agent') {
+              appendHumanAgentBubble(m.content, m.time, m.agent_name);
+              if (!chatOpen) {
+                const dot = document.getElementById('aezoon-unread-dot');
+                if (dot) { dot.style.display = 'flex'; }
+              }
+            }
+          });
+          lastMsgCount = msgs.length;
+        }
+      });
+    lastMsgCount = chatHistory.length;
   }
 
   // ── Save chat to Firestore ────────────────────────────────────
@@ -106,7 +153,6 @@
     const model = AI_CONFIG.model || 'gemini-1.5-flash';
     const key = AI_CONFIG.api_key || '';
     if (!key) return 'Sorry, AI abhi available nahi hai. Please baad mein try karein.';
-
     const basePrompt = `You are a friendly, professional customer support AI for ${WIDGET_CONFIG.storeName}.
 
 LANGUAGE RULE (MOST IMPORTANT):
@@ -136,6 +182,22 @@ BEHAVIOR:
       ? basePrompt + '\n\nSTORE SPECIFIC INFO:\n' + AI_CONFIG.system_prompt
       : basePrompt;
 
+    // ── RAG: Find relevant KB cards ───────────────────────────
+    let kbContext = '';
+    const kbCards = AI_CONFIG.kb_cards || [];
+    if (kbCards.length) {
+      const relevant = findRelevantKBCards(userMsg, kbCards);
+      if (relevant.length) {
+        kbContext = '\n\n--- RELEVANT KNOWLEDGE BASE ---\n';
+        relevant.forEach(c => {
+          kbContext += `\n[${c.icon || '📄'} ${c.name}]\n${c.content}\n`;
+        });
+        kbContext += '\n--- USE ABOVE INFO TO ANSWER ---';
+      }
+    }
+
+    const finalPrompt = systemPrompt + kbContext;
+
     const history = chatHistory.slice(-8);
 
     if (model.startsWith('gemini')) {
@@ -148,7 +210,7 @@ BEHAVIOR:
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: msgs,
-          systemInstruction: { parts: [{ text: systemPrompt }] },
+          systemInstruction: { parts: [{ text: finalPrompt }] },
           generationConfig: { temperature: 0.7, maxOutputTokens: 512 }
         })
       });
@@ -157,7 +219,7 @@ BEHAVIOR:
       return data.candidates[0].content.parts[0].text;
     } else {
       const msgs = [
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: finalPrompt },
         ...history.map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content })),
         { role: 'user', content: userMsg }
       ];
@@ -172,6 +234,25 @@ BEHAVIOR:
     }
   }
 
+  // ── RAG: Find relevant KB cards ───────────────────────────────
+  function findRelevantKBCards(userMsg, cards) {
+    const msg = userMsg.toLowerCase();
+    const scored = cards.map(card => {
+      let score = 0;
+      const keywords = (card.keywords || '').toLowerCase().split(',').map(k => k.trim()).filter(Boolean);
+      const name = (card.name || '').toLowerCase();
+      keywords.forEach(kw => {
+        if (kw && msg.includes(kw)) score += 10;
+        if (kw && kw.length > 3 && msg.split(' ').some(w => w.includes(kw) || kw.includes(w))) score += 3;
+      });
+      name.split(' ').forEach(w => { if (w.length > 2 && msg.includes(w)) score += 4; });
+      return { ...card, score };
+    });
+    return scored.filter(c => c.score > 0).sort((a, b) => b.score - a.score).slice(0, 2);
+  }
+
+  let isHumanModeActive = false; // synced from Firestore listener
+
   // ── Send Message ──────────────────────────────────────────────
   async function sendMessage() {
     if (isTyping) return;
@@ -180,6 +261,19 @@ BEHAVIOR:
     if (!text) return;
     input.value = '';
     input.style.height = 'auto';
+
+    const time = getTime();
+    chatHistory.push({ role: 'user', content: text, time });
+    appendBubble('user', text, time, true);
+
+    // If human agent is active — just save, no AI reply
+    if (isHumanModeActive) {
+      await saveChat();
+      return;
+    }
+
+    showTyping();
+    isTyping = true;
 
     const time = getTime();
     chatHistory.push({ role: 'user', content: text, time });
@@ -287,6 +381,7 @@ BEHAVIOR:
 
   // ── DOM Helpers ───────────────────────────────────────────────
   function appendBubble(role, text, time, animate) {
+    if (role === 'human_agent') { appendHumanAgentBubble(text, time); return; }
     const msgs = document.getElementById('aezoon-messages');
     if (!msgs) return;
     const row = document.createElement('div');
@@ -356,8 +451,26 @@ BEHAVIOR:
       .replace(/`(.*?)`/g, '<code>$1</code>');
   }
 
-  function showTyping() {
+  // ── Human Agent Bubble ────────────────────────────────────────
+  function appendHumanAgentBubble(text, time, agentName) {
     const msgs = document.getElementById('aezoon-messages');
+    if (!msgs) return;
+    const row = document.createElement('div');
+    row.className = 'aezoon-msg-row bot';
+    const formatted = formatMessage(text);
+    row.innerHTML = `
+      <div class="aezoon-bot-avatar" style="background:linear-gradient(135deg,#10b981,#059669);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">👨‍💼</div>
+      <div class="aezoon-bubble bot aezoon-agent-bubble">
+        <div class="aezoon-agent-label">${agentName || 'Support Agent'}</div>
+        ${formatted}
+        <div class="aezoon-bubble-time">${time || getTime()}</div>
+      </div>`;
+    row.style.animation = 'bubbleInBot 0.25s ease both';
+    msgs.appendChild(row);
+    scrollBottom();
+  }
+
+  function showTyping() {    const msgs = document.getElementById('aezoon-messages');
     const el = document.createElement('div');
     el.id = 'aezoon-typing-row';
     el.className = 'aezoon-msg-row bot';
