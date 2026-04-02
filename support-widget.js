@@ -12,13 +12,12 @@
 
   // ── CONFIG — Yahan apni values dalo ──────────────────────────
   const WIDGET_CONFIG = {
-    storeName: 'Aezoon Store',          // Tumhara store naam
-    botName: 'Aezoon Support',          // Chat mein dikhne wala naam
-    botEmoji: '🛍️',                     // Avatar emoji
+    storeName: 'Aezoon Store',
+    botName: 'Aezoon Support',
+    iconUrl: 'https://thumbs.dreamstime.com/b/support-customer-care-icon-elegant-cyan-blue-round-button-support-customer-care-icon-isolated-elegant-cyan-blue-round-button-99714974.jpg',
     welcomeMsg: 'Salam! 👋 Main Aezoon Support hoon. Aapki kaise madad kar sakta hoon?',
     placeholder: 'Apna sawal likhein...',
-    primaryColor: '#6366f1',
-    poweredBy: 'Powered by Aezoon',
+    poweredBy: 'Powered by Aezoon AI',
     firebaseConfig: {
       apiKey: "AIzaSyC_asx16rLu7LmC3d-jRVBESrQvfrceuVo",
       authDomain: "aezoon-app.firebaseapp.com",
@@ -183,8 +182,19 @@
     const row = document.createElement('div');
     row.className = 'aezoon-msg-row ' + (role === 'user' ? 'user' : 'bot');
     const formatted = text.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
-    row.innerHTML = `<div class="aezoon-bubble ${role === 'user' ? 'user' : 'bot'}">${formatted}<div class="aezoon-bubble-time">${time}</div></div>`;
-    if (animate) row.style.animation = 'aezoonSlideUp 0.2s ease';
+
+    if (role === 'bot') {
+      row.innerHTML = `
+        <div class="aezoon-bot-avatar"><img src="${WIDGET_CONFIG.iconUrl}" alt="Support"></div>
+        <div class="aezoon-bubble bot">${formatted}
+          <div class="aezoon-bubble-time">${time}</div>
+        </div>`;
+    } else {
+      row.innerHTML = `
+        <div class="aezoon-bubble user">${formatted}
+          <div class="aezoon-bubble-time">${time} ✓✓</div>
+        </div>`;
+    }
     msgs.appendChild(row);
     scrollBottom();
   }
@@ -212,15 +222,18 @@
   function toggleChat() {
     chatOpen = !chatOpen;
     const box = document.getElementById('aezoon-chat-box');
-    const btn = document.getElementById('aezoon-widget-btn');
+    const btnImg = document.getElementById('aezoon-btn-img');
+    const btnClose = document.getElementById('aezoon-btn-close');
     if (chatOpen) {
       box.classList.add('open');
-      btn.innerHTML = '✕';
+      if (btnImg) btnImg.style.display = 'none';
+      if (btnClose) btnClose.style.display = 'flex';
       document.getElementById('aezoon-unread-dot').style.display = 'none';
-      document.getElementById('aezoon-input')?.focus();
+      setTimeout(() => document.getElementById('aezoon-input')?.focus(), 300);
     } else {
       box.classList.remove('open');
-      btn.innerHTML = WIDGET_CONFIG.botEmoji;
+      if (btnImg) btnImg.style.display = 'block';
+      if (btnClose) btnClose.style.display = 'none';
     }
   }
 
@@ -231,47 +244,56 @@
       const link = document.createElement('link');
       link.id = 'aezoon-widget-css';
       link.rel = 'stylesheet';
-      // Try to find CSS relative to script
       const scripts = document.querySelectorAll('script[src*="support-widget"]');
       const base = scripts.length ? scripts[scripts.length - 1].src.replace('support-widget.js', '') : '';
       link.href = base + 'support-widget.css';
       document.head.appendChild(link);
     }
 
-    // Widget button
+    // Widget button — image icon + close X
     const btn = document.createElement('button');
     btn.id = 'aezoon-widget-btn';
     btn.setAttribute('aria-label', 'Open support chat');
-    btn.innerHTML = `${WIDGET_CONFIG.botEmoji}<span id="aezoon-unread-dot"></span>`;
-    btn.style.background = WIDGET_CONFIG.primaryColor;
+    btn.innerHTML = `
+      <span id="aezoon-ring1"></span>
+      <span id="aezoon-ring2"></span>
+      <img id="aezoon-btn-img" src="${WIDGET_CONFIG.iconUrl}" alt="Support">
+      <span id="aezoon-btn-close">✕</span>
+      <span id="aezoon-unread-dot"></span>`;
     btn.onclick = toggleChat;
 
     // Chat box
     const box = document.createElement('div');
     box.id = 'aezoon-chat-box';
     box.innerHTML = `
-      <div id="aezoon-header" style="background:${WIDGET_CONFIG.primaryColor}">
-        <div id="aezoon-header-avatar">${WIDGET_CONFIG.botEmoji}</div>
+      <div id="aezoon-header">
+        <div id="aezoon-header-avatar">
+          <img src="${WIDGET_CONFIG.iconUrl}" alt="Support">
+        </div>
         <div id="aezoon-header-info">
           <div id="aezoon-header-name">${WIDGET_CONFIG.botName}</div>
-          <div id="aezoon-header-status">● Online — Typically replies instantly</div>
+          <div id="aezoon-header-status">
+            <span class="aezoon-status-dot"></span> Online — Replies instantly
+          </div>
         </div>
-        <button id="aezoon-close-btn" onclick="document.getElementById('aezoon-widget-btn').click()">✕</button>
+        <button id="aezoon-close-btn" onclick="document.getElementById('aezoon-widget-btn').click()" aria-label="Close">✕</button>
       </div>
-      <div id="aezoon-messages"></div>
+      <div id="aezoon-messages">
+        <div class="aezoon-date-sep"><span>Today</span></div>
+      </div>
       <div id="aezoon-input-area">
         <textarea id="aezoon-input" placeholder="${WIDGET_CONFIG.placeholder}" rows="1"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();window._aezoonSend()}"
           oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
-        <button id="aezoon-send-btn" onclick="window._aezoonSend()">➤</button>
+        <button id="aezoon-send-btn" onclick="window._aezoonSend()" aria-label="Send">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
       </div>
       <div id="aezoon-footer">${WIDGET_CONFIG.poweredBy}</div>
     `;
 
     document.body.appendChild(btn);
     document.body.appendChild(box);
-
-    // Expose send function globally
     window._aezoonSend = sendMessage;
   }
 
