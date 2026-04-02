@@ -543,6 +543,7 @@ tr:last-child td { border-bottom:none; }
   <div class="nav-item" onclick="nav('support')" id="nav-support">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
     <span>Customer Support</span>
+    <span id="supportNavBadge" style="display:none;background:#ef4444;color:#fff;font-size:0.62rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:10px;min-width:18px;text-align:center;margin-left:auto;">0</span>
   </div>
 
   <div class="sidebar-bottom">
@@ -1052,6 +1053,8 @@ tr:last-child td { border-bottom:none; }
     </div>
 
     <div class="cs-shell">
+      <!-- Alerts banner -->
+      <div id="csAlertsBanner" style="display:none;position:absolute;top:0;left:0;right:0;z-index:10;"></div>
       <!-- LEFT: Chat List -->
       <div class="cs-sidebar">
         <div class="cs-sidebar-header">
@@ -1091,6 +1094,8 @@ tr:last-child td { border-bottom:none; }
               </div>
               <button class="btn btn-danger btn-sm" onclick="deleteSupportChat()">🗑 Delete</button>
             </div>
+            <!-- Tag bar -->
+            <div class="cs-tag-bar" id="csChatTagBar"></div>
             <div class="cs-chat-messages" id="csChatMessages"></div>
           </div>
         </div>
@@ -1116,12 +1121,27 @@ tr:last-child td { border-bottom:none; }
           </div>
           <div class="cs-settings-section" style="margin-top:1rem;">
             <h4>📝 System Prompt</h4>
-            <p>AI customer support agent ka behavior define karo</p>
-            <div class="form-row">
-              <label>System Prompt</label>
-              <textarea class="inp" id="cs_system_prompt" rows="6" placeholder="You are a helpful customer support agent for [Store Name]. Answer questions about products, shipping, returns..."></textarea>
+            <p>Click karo notepad mein edit karne ke liye — AI features ke saath</p>
+            <!-- Prompt Preview Card — click to open notepad -->
+            <div class="cs-prompt-preview-card" onclick="openPromptNotepad()" id="csPromptPreviewCard">
+              <div class="cs-prompt-preview-header">
+                <span>📄 system_prompt.txt</span>
+                <div class="cs-prompt-preview-actions">
+                  <span class="cs-prompt-preview-badge">Click to Edit</span>
+                  <span style="font-size:1rem;">✏️</span>
+                </div>
+              </div>
+              <div class="cs-prompt-preview-body" id="csPromptPreviewText">
+                <span style="color:var(--muted);font-style:italic;">No prompt set — click to write one</span>
+              </div>
+              <div class="cs-prompt-preview-footer">
+                <span id="csPromptWordCount">0 words</span>
+                <span id="csPromptSavedAt"></span>
+              </div>
             </div>
-            <div class="form-row">
+            <!-- Hidden textarea synced with notepad -->
+            <textarea id="cs_system_prompt" style="display:none;"></textarea>
+            <div class="form-row" style="margin-top:1rem;">
               <label>Welcome Message</label>
               <input class="inp" id="cs_welcome_msg" placeholder="Salam! Main aapki kaise madad kar sakta hoon?">
             </div>
@@ -1171,6 +1191,95 @@ tr:last-child td { border-bottom:none; }
       </div>
     </div>
   </div>
+
+<!-- PROMPT NOTEPAD MODAL -->
+<div class="pn-overlay" id="promptNotepadOverlay" onclick="if(event.target===this)closePromptNotepad()">
+  <div class="pn-modal" id="promptNotepadModal">
+
+    <!-- Title bar -->
+    <div class="pn-titlebar">
+      <div class="pn-titlebar-left">
+        <div class="pn-dot pn-dot-red" onclick="closePromptNotepad()" title="Close"></div>
+        <div class="pn-dot pn-dot-yellow" onclick="pnToggleFullscreen()" title="Fullscreen"></div>
+        <div class="pn-dot pn-dot-green" onclick="pnAiImprove()" title="AI Improve"></div>
+      </div>
+      <div class="pn-titlebar-center">
+        <span class="pn-file-icon">📄</span>
+        <span id="pnFileName">system_prompt.txt</span>
+        <span class="pn-unsaved-dot" id="pnUnsavedDot" style="display:none;">●</span>
+      </div>
+      <div class="pn-titlebar-right">
+        <span id="pnWordCount" class="pn-meta">0 words</span>
+        <span id="pnCharCount" class="pn-meta">0 chars</span>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="pn-toolbar">
+      <div class="pn-toolbar-group">
+        <button class="pn-tool-btn" onclick="pnInsert('• ')" title="Bullet point">• List</button>
+        <button class="pn-tool-btn" onclick="pnInsert('1. ')" title="Numbered list"># List</button>
+        <button class="pn-tool-btn" onclick="pnWrap('**','**')" title="Bold"><b>B</b></button>
+        <button class="pn-tool-btn" onclick="pnWrap('`','`')" title="Code"><code style="font-size:11px;">{ }</code></button>
+      </div>
+      <div class="pn-toolbar-sep"></div>
+      <div class="pn-toolbar-group">
+        <button class="pn-tool-btn pn-ai-btn" onclick="pnAiImprove()">✨ AI Improve</button>
+        <button class="pn-tool-btn pn-ai-btn" onclick="pnAiShorten()">✂️ Shorten</button>
+        <button class="pn-tool-btn pn-ai-btn" onclick="pnAiTranslate()">🌐 Translate</button>
+      </div>
+      <div class="pn-toolbar-sep"></div>
+      <div class="pn-toolbar-group">
+        <button class="pn-tool-btn" onclick="pnUndo()" title="Undo">↩</button>
+        <button class="pn-tool-btn" onclick="pnClear()" title="Clear" style="color:var(--danger);">🗑</button>
+      </div>
+    </div>
+
+    <!-- AI suggestion bar (hidden by default) -->
+    <div class="pn-ai-bar" id="pnAiBar" style="display:none;">
+      <div class="pn-ai-bar-header">
+        <span>✨ AI Suggestion</span>
+        <div style="display:flex;gap:0.5rem;">
+          <button class="pn-ai-accept-btn" onclick="pnAcceptSuggestion()">✅ Accept</button>
+          <button class="pn-ai-reject-btn" onclick="pnRejectSuggestion()">✕ Dismiss</button>
+        </div>
+      </div>
+      <div class="pn-ai-bar-content" id="pnAiSuggestion"></div>
+      <div class="pn-ai-bar-loading" id="pnAiLoading" style="display:none;">
+        <span class="pn-ai-spinner"></span> AI is thinking...
+      </div>
+    </div>
+
+    <!-- Editor body -->
+    <div class="pn-body">
+      <!-- Line numbers -->
+      <div class="pn-line-nums" id="pnLineNums">1</div>
+      <!-- Editor -->
+      <textarea class="pn-editor" id="pnEditor"
+        placeholder="Write your system prompt here...&#10;&#10;Example:&#10;You are a helpful support agent for Aezoon Store.&#10;• Answer questions about products, shipping, returns&#10;• Be polite and concise&#10;• If unsure, ask for clarification"
+        oninput="pnOnInput()"
+        onkeydown="pnKeydown(event)"
+        onscroll="pnSyncScroll()"
+        spellcheck="true"></textarea>
+    </div>
+
+    <!-- Status bar -->
+    <div class="pn-statusbar">
+      <div class="pn-status-left">
+        <span id="pnCursorPos">Ln 1, Col 1</span>
+        <span class="pn-status-sep">|</span>
+        <span>UTF-8</span>
+        <span class="pn-status-sep">|</span>
+        <span>Plain Text</span>
+      </div>
+      <div class="pn-status-right">
+        <span id="pnSaveStatus" class="pn-save-status">All changes saved</span>
+        <button class="pn-save-btn" onclick="pnSaveAndClose()">💾 Save & Close</button>
+      </div>
+    </div>
+
+  </div>
+</div>
 
 </main>
 </div>
@@ -1657,7 +1766,7 @@ auth.onAuthStateChanged(user => {
     app.style.display = 'block';
     startRealTimeSync();
     startSettingsSync();
-    startCustomerSync();
+    if (typeof startCustomerSync === 'function') startCustomerSync();
     startTasksSync();
     startNotesSync();
     startActivitySync();
@@ -1667,6 +1776,7 @@ auth.onAuthStateChanged(user => {
     startPresence();
     loadDisplayName();
     initApp();
+    if (typeof loadSupportConfig === 'function') loadSupportConfig();
   } else {
     lock.style.display = 'flex';
     app.style.display = 'none';
@@ -1724,7 +1834,7 @@ function nav(page) {
   if (page === 'aiteam') { if(typeof initAiTeam==='function') initAiTeam(); }
   if (page === 'settings') { renderSettings(); loadDisplayName(); }
   if (page === 'history') renderHistory();
-  if (page === 'support') { initCustomerSupport(); renderSupportChatList(); updateSupportStats(); }
+  if (page === 'support') { if(typeof initCustomerSupport==='function') initCustomerSupport(); }
   updatePresence(page);
 }
 
@@ -3153,6 +3263,37 @@ function openGoalModal() { /* overridden by working.js */ }
 function previewGoal() { /* overridden by working.js */ }
 function renderSettings() { /* overridden by working.js */ }
 function showOrderDetail(id) { /* overridden by working.js */ }
+
+// ── Customer Support stubs — overridden by customer-support.js ──
+function initCustomerSupport() { /* overridden by customer-support.js */ }
+function renderSupportChatList() { /* overridden by customer-support.js */ }
+function updateSupportStats() { /* overridden by customer-support.js */ }
+function loadSupportConfig() { /* overridden by customer-support.js */ }
+function saveSupportConfig() { /* overridden by customer-support.js */ }
+function selectSupportChat(id) { /* overridden by customer-support.js */ }
+function deleteSupportChat() { /* overridden by customer-support.js */ }
+function csSupportTabSwitch(tab) { /* overridden by customer-support.js */ }
+function sendPromptUpgradeMsg() { /* overridden by customer-support.js */ }
+function handlePromptFileUpload(el) { /* overridden by customer-support.js */ }
+function removeUploadedDoc(i) { /* overridden by customer-support.js */ }
+function clearPromptChat() { /* overridden by customer-support.js */ }
+function copyEmbedCode() { /* overridden by customer-support.js */ }
+function openPromptNotepad() { /* overridden by customer-support.js */ }
+function closePromptNotepad() { /* overridden by customer-support.js */ }
+function pnSaveAndClose() { /* overridden by customer-support.js */ }
+function pnOnInput() { /* overridden by customer-support.js */ }
+function pnKeydown(e) { /* overridden by customer-support.js */ }
+function pnSyncScroll() { /* overridden by customer-support.js */ }
+function pnInsert(t) { /* overridden by customer-support.js */ }
+function pnWrap(a,b) { /* overridden by customer-support.js */ }
+function pnUndo() { /* overridden by customer-support.js */ }
+function pnClear() { /* overridden by customer-support.js */ }
+function pnAiImprove() { /* overridden by customer-support.js */ }
+function pnAiShorten() { /* overridden by customer-support.js */ }
+function pnAiTranslate() { /* overridden by customer-support.js */ }
+function pnAcceptSuggestion() { /* overridden by customer-support.js */ }
+function pnRejectSuggestion() { /* overridden by customer-support.js */ }
+function pnToggleFullscreen() { /* overridden by customer-support.js */ }
 function exportBackup() { /* overridden by working.js */ }
 function importBackup(e) { /* overridden by working.js */ }
 function confirmClearLocalData() { /* overridden by working.js */ }

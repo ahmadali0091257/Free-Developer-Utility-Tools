@@ -411,3 +411,106 @@
   }
   #aezoon-widget-btn { bottom: 16px; right: 16px; }
 }
+
+/* ── MESSAGE FORMATTING ── */
+.aezoon-p {
+  margin: 0 0 4px 0;
+  line-height: 1.5;
+}
+.aezoon-p:last-child { margin-bottom: 0; }
+
+.aezoon-list {
+  margin: 4px 0 4px 0;
+  padding-left: 18px;
+  line-height: 1.6;
+}
+.aezoon-list li {
+  margin-bottom: 3px;
+  font-size: 13.5px;
+}
+.aezoon-list li:last-child { margin-bottom: 0; }
+
+/* Bullet list style */
+ul.aezoon-list { list-style: none; padding-left: 4px; }
+ul.aezoon-list li::before {
+  content: '•';
+  margin-right: 7px;
+  font-size: 14px;
+}
+.aezoon-bubble.user ul.aezoon-list li::before { color: rgba(255,255,255,0.8); }
+.aezoon-bubble.bot  ul.aezoon-list li::before { color: #0ea5e9; }
+
+/* Numbered list */
+ol.aezoon-list { list-style: decimal; padding-left: 20px; }
+ol.aezoon-list li::marker { color: #0ea5e9; font-weight: 700; }
+.aezoon-bubble.user ol.aezoon-list li::marker { color: rgba(255,255,255,0.8); }
+
+/* Inline code */
+.aezoon-bubble code {
+  background: rgba(0,0,0,0.08);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: monospace;
+}
+.aezoon-bubble.user code { background: rgba(255,255,255,0.2); }
+
+/* ── HUMAN SUPPORT CARD ── */
+.aezoon-human-card {
+  background: linear-gradient(135deg, rgba(14,165,233,0.08), rgba(99,102,241,0.08));
+  border: 1.5px solid rgba(14,165,233,0.35);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin: 4px 0;
+  animation: bubbleInBot 0.3s cubic-bezier(0.22,1,0.36,1) both;
+}
+.aezoon-human-icon {
+  font-size: 1.6rem;
+  text-align: center;
+  margin-bottom: 6px;
+}
+.aezoon-human-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+.aezoon-human-text strong {
+  font-size: 13.5px;
+  color: #1e293b;
+}
+.aezoon-human-text span {
+  font-size: 11.5px;
+  color: #64748b;
+}
+.aezoon-human-btns {
+  display: flex;
+  gap: 8px;
+}
+.aezoon-human-yes {
+  flex: 1;
+  background: linear-gradient(135deg, #0ea5e9, #6366f1);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.aezoon-human-yes:hover { opacity: 0.9; transform: translateY(-1px); }
+.aezoon-human-no {
+  background: #f1f5f9;
+  color: #64748b;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.aezoon-human-no:hover { background: #e2e8f0; }

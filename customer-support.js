@@ -11,11 +11,14 @@ let CS_PROMPT_HISTORY = [];
 let CS_PROMPT_TYPING = false;
 let CS_UPLOADED_DOCS = []; // { name, content } array of uploaded files
 let CS_INIT_DONE = false;
+let CS_ALERTS_UNSUB = null;
 
 // ── Init ──────────────────────────────────────────────────────
 function initCustomerSupport() {
   if (!CS_INIT_DONE) {
     startSupportChatsSync();
+    startAlertsSync();
+    requestNotifPermission();
     CS_INIT_DONE = true;
   }
   loadSupportConfig();
@@ -68,16 +71,20 @@ function renderSupportChatList() {
     const isActive = CS_SELECTED_SESSION === c.session_id;
     const unread = c.unread || 0;
     const shortId = (c.session_id || '').replace('aezoon_sess_', '#').substring(0, 12);
+    const tag = c.tag || '';
+    const humanReq = c.human_requested || false;
+    const tagBadge = tag ? `<span class="cs-tag-badge cs-tag-${tag}">${tag}</span>` : '';
+    const humanBadge = humanReq ? `<span class="cs-tag-badge cs-tag-human">👨‍💼 Human</span>` : '';
     return `
       <div class="cs-chat-item ${isActive ? 'active' : ''}" onclick="selectSupportChat('${c.session_id}')">
-        <div class="cs-chat-avatar">💬</div>
+        <div class="cs-chat-avatar">${humanReq ? '🆘' : '💬'}</div>
         <div class="cs-chat-info">
-          <div class="cs-chat-name">${shortId}</div>
+          <div class="cs-chat-name">${shortId} ${tagBadge}${humanBadge}</div>
           <div class="cs-chat-preview">${escHtml(preview)}</div>
         </div>
         <div class="cs-chat-meta">
           <div class="cs-chat-time">${last?.time || ''}</div>
-          ${unread > 0 ? `<div class="cs-unread-badge">${unread}</div>` : ''}
+          ${unread > 0 ? `<div class="cs-unread-badge">${unread === 999 ? '!' : unread}</div>` : ''}
         </div>
       </div>`;
   }).join('');
@@ -114,16 +121,44 @@ function renderSupportChatDetail(chat) {
   const shortId = (chat.session_id || '').replace('aezoon_sess_', '#').substring(0, 14);
   document.getElementById('csChatHeaderName').textContent = 'Visitor ' + shortId;
   document.getElementById('csChatHeaderSub').textContent = (chat.page || 'Unknown page') + ' · ' + msgs.length + ' messages';
+
+  // Tag buttons
+  const tagBar = document.getElementById('csChatTagBar');
+  if (tagBar) {
+    const cur = chat.tag || '';
+    tagBar.innerHTML = `
+      <span style="font-size:0.72rem;color:var(--muted);font-weight:600;">TAG:</span>
+      <button class="cs-tag-btn ${cur==='resolved'?'active-resolved':''}" onclick="setChatTag('resolved')">✅ Resolved</button>
+      <button class="cs-tag-btn ${cur==='pending'?'active-pending':''}" onclick="setChatTag('pending')">⏳ Pending</button>
+      <button class="cs-tag-btn ${cur==='spam'?'active-spam':''}" onclick="setChatTag('spam')">🚫 Spam</button>
+      ${cur ? `<button class="cs-tag-btn" onclick="setChatTag('')" style="color:var(--muted);">✕ Clear</button>` : ''}`;
+  }
+
   const container = document.getElementById('csChatMessages');
   if (!container) return;
-  container.innerHTML = msgs.map(m => {
+
+  // Human requested banner
+  const humanBanner = chat.human_requested
+    ? `<div class="cs-human-alert-banner">🆘 This visitor requested human support — please reply below</div>`
+    : '';
+
+  container.innerHTML = humanBanner + msgs.map(m => {
     const isUser = m.role === 'user';
-    const formatted = (m.content || '').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+    const formatted = (m.content || '').replace(/\[\[HUMAN_NEEDED\]\]/g, '').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
     return `<div class="cs-msg-row ${isUser ? 'user' : 'bot'}">
       <div class="cs-bubble ${isUser ? 'user' : 'bot'}">${formatted}<div class="cs-bubble-time">${m.time || ''}</div></div>
     </div>`;
   }).join('');
   container.scrollTop = container.scrollHeight;
+}
+
+function setChatTag(tag) {
+  if (!CS_SELECTED_SESSION) return;
+  const chat = CS_CHATS.find(c => c.session_id === CS_SELECTED_SESSION);
+  if (!chat) return;
+  db.collection('support_chats').doc(chat.id).update({ tag })
+    .then(() => toast(tag ? `Tagged: ${tag}` : 'Tag removed', 'success'))
+    .catch(e => toast('Error: ' + e.message, 'error'));
 }
 
 function deleteSupportChat() {
@@ -148,6 +183,7 @@ function fillSupportSettingsForm() {
   set('cs_api_key', c.api_key);
   set('cs_system_prompt', c.system_prompt);
   set('cs_welcome_msg', c.welcome_msg);
+  updatePromptPreviewCard(c.system_prompt || '');
 }
 
 async function saveSupportConfig() {
@@ -520,4 +556,439 @@ function csSupportTabSwitch(tab) {
   document.querySelector(`[onclick="csSupportTabSwitch('${tab}')"]`).classList.add('active');
   if (tab === 'guide') renderShopifyGuide();
   if (tab === 'prompt') { renderPromptChat(); renderUploadedDocs(); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// ── PROMPT NOTEPAD ────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+
+let PN_UNDO_STACK = [];
+let PN_SUGGESTION = '';
+let PN_FULLSCREEN = false;
+let PN_SAVE_TIMER = null;
+
+// ── Open / Close ──────────────────────────────────────────────
+function openPromptNotepad() {
+  const overlay = document.getElementById('promptNotepadOverlay');
+  const editor  = document.getElementById('pnEditor');
+  if (!overlay || !editor) return;
+
+  // Load current prompt into editor
+  const current = document.getElementById('cs_system_prompt')?.value || CS_SUPPORT_CONFIG.system_prompt || '';
+  editor.value = current;
+  PN_UNDO_STACK = [current];
+
+  overlay.classList.add('open');
+  pnUpdateMeta();
+  pnUpdateLineNums();
+  setTimeout(() => editor.focus(), 150);
+}
+
+function closePromptNotepad() {
+  document.getElementById('promptNotepadOverlay')?.classList.remove('open');
+  document.getElementById('pnAiBar').style.display = 'none';
+  PN_FULLSCREEN = false;
+  document.getElementById('promptNotepadModal')?.classList.remove('fullscreen');
+}
+
+function pnSaveAndClose() {
+  const val = document.getElementById('pnEditor')?.value || '';
+  // Sync to hidden textarea
+  const ta = document.getElementById('cs_system_prompt');
+  if (ta) ta.value = val;
+  // Update preview card
+  updatePromptPreviewCard(val);
+  // Auto-save to Firebase
+  liveUpdatePrompt(val);
+  closePromptNotepad();
+  toast('System prompt saved!', 'success');
+}
+
+function pnToggleFullscreen() {
+  PN_FULLSCREEN = !PN_FULLSCREEN;
+  document.getElementById('promptNotepadModal')?.classList.toggle('fullscreen', PN_FULLSCREEN);
+}
+
+// ── Editor events ─────────────────────────────────────────────
+function pnOnInput() {
+  pnUpdateMeta();
+  pnUpdateLineNums();
+  pnMarkUnsaved();
+  // Auto-save debounce (2s)
+  clearTimeout(PN_SAVE_TIMER);
+  PN_SAVE_TIMER = setTimeout(() => pnAutoSave(), 2000);
+}
+
+function pnKeydown(e) {
+  const editor = document.getElementById('pnEditor');
+  // Tab → 2 spaces
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const s = editor.selectionStart, end = editor.selectionEnd;
+    editor.value = editor.value.substring(0, s) + '  ' + editor.value.substring(end);
+    editor.selectionStart = editor.selectionEnd = s + 2;
+    pnOnInput();
+  }
+  // Ctrl+S → save
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    pnSaveAndClose();
+  }
+  // Ctrl+Z → undo
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+    e.preventDefault();
+    pnUndo();
+  }
+  // Push to undo stack on meaningful change
+  if (!e.ctrlKey && !e.metaKey && e.key.length === 1) {
+    if (PN_UNDO_STACK[PN_UNDO_STACK.length - 1] !== editor.value) {
+      PN_UNDO_STACK.push(editor.value);
+      if (PN_UNDO_STACK.length > 50) PN_UNDO_STACK.shift();
+    }
+  }
+  // Update cursor position
+  setTimeout(pnUpdateCursor, 0);
+}
+
+function pnSyncScroll() {
+  const editor = document.getElementById('pnEditor');
+  const lineNums = document.getElementById('pnLineNums');
+  if (lineNums) lineNums.scrollTop = editor.scrollTop;
+}
+
+// ── Meta updates ──────────────────────────────────────────────
+function pnUpdateMeta() {
+  const val = document.getElementById('pnEditor')?.value || '';
+  const words = val.trim() ? val.trim().split(/\s+/).length : 0;
+  const chars = val.length;
+  const el1 = document.getElementById('pnWordCount');
+  const el2 = document.getElementById('pnCharCount');
+  if (el1) el1.textContent = words + ' words';
+  if (el2) el2.textContent = chars + ' chars';
+}
+
+function pnUpdateLineNums() {
+  const editor = document.getElementById('pnEditor');
+  const lineNums = document.getElementById('pnLineNums');
+  if (!editor || !lineNums) return;
+  const lines = editor.value.split('\n').length;
+  lineNums.textContent = Array.from({ length: lines }, (_, i) => i + 1).join('\n');
+}
+
+function pnUpdateCursor() {
+  const editor = document.getElementById('pnEditor');
+  const el = document.getElementById('pnCursorPos');
+  if (!editor || !el) return;
+  const text = editor.value.substring(0, editor.selectionStart);
+  const lines = text.split('\n');
+  el.textContent = `Ln ${lines.length}, Col ${lines[lines.length - 1].length + 1}`;
+}
+
+function pnMarkUnsaved() {
+  const dot = document.getElementById('pnUnsavedDot');
+  const status = document.getElementById('pnSaveStatus');
+  if (dot) dot.style.display = 'inline';
+  if (status) { status.textContent = 'Unsaved changes'; status.style.color = 'rgba(255,255,255,0.6)'; }
+}
+
+function pnMarkSaved() {
+  const dot = document.getElementById('pnUnsavedDot');
+  const status = document.getElementById('pnSaveStatus');
+  if (dot) dot.style.display = 'none';
+  if (status) { status.textContent = '✓ Auto-saved'; status.style.color = '#fff'; }
+}
+
+async function pnAutoSave() {
+  const val = document.getElementById('pnEditor')?.value || '';
+  const ta = document.getElementById('cs_system_prompt');
+  if (ta) ta.value = val;
+  updatePromptPreviewCard(val);
+  try {
+    await liveUpdatePrompt(val);
+    pnMarkSaved();
+  } catch (e) { /* silent */ }
+}
+
+// ── Toolbar actions ───────────────────────────────────────────
+function pnInsert(text) {
+  const editor = document.getElementById('pnEditor');
+  if (!editor) return;
+  const s = editor.selectionStart;
+  const before = editor.value.substring(0, s);
+  const after  = editor.value.substring(editor.selectionEnd);
+  // Insert at start of current line
+  const lineStart = before.lastIndexOf('\n') + 1;
+  editor.value = editor.value.substring(0, lineStart) + text + editor.value.substring(lineStart);
+  editor.selectionStart = editor.selectionEnd = lineStart + text.length;
+  editor.focus();
+  pnOnInput();
+}
+
+function pnWrap(before, after) {
+  const editor = document.getElementById('pnEditor');
+  if (!editor) return;
+  const s = editor.selectionStart, e = editor.selectionEnd;
+  const selected = editor.value.substring(s, e) || 'text';
+  editor.value = editor.value.substring(0, s) + before + selected + after + editor.value.substring(e);
+  editor.selectionStart = s + before.length;
+  editor.selectionEnd   = s + before.length + selected.length;
+  editor.focus();
+  pnOnInput();
+}
+
+function pnUndo() {
+  if (PN_UNDO_STACK.length <= 1) return;
+  PN_UNDO_STACK.pop();
+  const editor = document.getElementById('pnEditor');
+  if (editor) {
+    editor.value = PN_UNDO_STACK[PN_UNDO_STACK.length - 1];
+    pnOnInput();
+  }
+}
+
+function pnClear() {
+  if (!confirm('Editor clear karein?')) return;
+  const editor = document.getElementById('pnEditor');
+  if (editor) { PN_UNDO_STACK.push(editor.value); editor.value = ''; pnOnInput(); }
+}
+
+// ── AI Features ───────────────────────────────────────────────
+async function pnAiImprove() {
+  const editor = document.getElementById('pnEditor');
+  if (!editor?.value.trim()) { toast('Pehle kuch likho', 'warning'); return; }
+  await pnCallAI(`Improve this system prompt — make it more effective, clear, and professional. Keep it concise (max 250 words). Return ONLY the improved prompt, no explanation:\n\n${editor.value}`);
+}
+
+async function pnAiShorten() {
+  const editor = document.getElementById('pnEditor');
+  if (!editor?.value.trim()) { toast('Pehle kuch likho', 'warning'); return; }
+  await pnCallAI(`Shorten this system prompt significantly while keeping all key information. Max 150 words. Return ONLY the shortened prompt:\n\n${editor.value}`);
+}
+
+async function pnAiTranslate() {
+  const editor = document.getElementById('pnEditor');
+  if (!editor?.value.trim()) { toast('Pehle kuch likho', 'warning'); return; }
+  const lang = prompt('Kis language mein translate karein? (e.g. Urdu, Arabic, English)');
+  if (!lang) return;
+  await pnCallAI(`Translate this system prompt to ${lang}. Return ONLY the translated prompt:\n\n${editor.value}`);
+}
+
+async function pnCallAI(instruction) {
+  const key = CS_SUPPORT_CONFIG.api_key || '';
+  const model = CS_SUPPORT_CONFIG.model || 'gemini-1.5-flash';
+  if (!key) { toast('API key nahi hai — Settings mein add karo', 'error'); return; }
+
+  const aiBar = document.getElementById('pnAiBar');
+  const loading = document.getElementById('pnAiLoading');
+  const content = document.getElementById('pnAiSuggestion');
+
+  aiBar.style.display = 'block';
+  loading.style.display = 'flex';
+  content.textContent = '';
+
+  try {
+    let result = '';
+    if (model.startsWith('gemini')) {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: instruction }] }],
+          generationConfig: { temperature: 0.5, maxOutputTokens: 600 }
+        })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      result = data.candidates[0].content.parts[0].text;
+    } else {
+      const res = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        body: JSON.stringify({ model, messages: [{ role: 'user', content: instruction }], max_tokens: 600, temperature: 0.5 })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      result = data.choices[0].message.content;
+    }
+    PN_SUGGESTION = result.trim();
+    loading.style.display = 'none';
+    content.textContent = PN_SUGGESTION;
+  } catch (e) {
+    loading.style.display = 'none';
+    content.textContent = '❌ Error: ' + e.message;
+    PN_SUGGESTION = '';
+  }
+}
+
+function pnAcceptSuggestion() {
+  if (!PN_SUGGESTION) return;
+  const editor = document.getElementById('pnEditor');
+  if (editor) {
+    PN_UNDO_STACK.push(editor.value);
+    editor.value = PN_SUGGESTION;
+    pnOnInput();
+  }
+  pnRejectSuggestion();
+  toast('✅ Suggestion accepted!', 'success');
+}
+
+function pnRejectSuggestion() {
+  PN_SUGGESTION = '';
+  document.getElementById('pnAiBar').style.display = 'none';
+  document.getElementById('pnAiSuggestion').textContent = '';
+}
+
+// ── Preview card update ───────────────────────────────────────
+function updatePromptPreviewCard(val) {
+  const preview = document.getElementById('csPromptPreviewText');
+  const wordCount = document.getElementById('csPromptWordCount');
+  const savedAt = document.getElementById('csPromptSavedAt');
+  if (preview) {
+    preview.innerHTML = val.trim()
+      ? `<span>${escHtml(val.substring(0, 200))}${val.length > 200 ? '...' : ''}</span>`
+      : `<span style="color:var(--muted);font-style:italic;">No prompt set — click to write one</span>`;
+  }
+  if (wordCount) {
+    const w = val.trim() ? val.trim().split(/\s+/).length : 0;
+    wordCount.textContent = w + ' words';
+  }
+  if (savedAt) {
+    savedAt.textContent = val ? 'Last saved: ' + new Date().toLocaleTimeString() : '';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// ── FEATURE 6: BROWSER NOTIFICATIONS + ALERTS SYNC ───────────
+// ══════════════════════════════════════════════════════════════
+
+function requestNotifPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+function sendBrowserNotif(title, body, onClick) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const n = new Notification(title, {
+    body,
+    icon: 'https://thumbs.dreamstime.com/b/support-customer-care-icon-elegant-cyan-blue-round-button-support-customer-care-icon-isolated-elegant-cyan-blue-round-button-99714974.jpg',
+    badge: 'https://thumbs.dreamstime.com/b/support-customer-care-icon-elegant-cyan-blue-round-button-support-customer-care-icon-isolated-elegant-cyan-blue-round-button-99714974.jpg',
+    tag: 'aezoon-support',
+    requireInteraction: true
+  });
+  if (onClick) n.onclick = () => { window.focus(); onClick(); n.close(); };
+}
+
+// Listen for new alerts (human_requested + new chats)
+function startAlertsSync() {
+  // New human requests
+  db.collection('support_alerts')
+    .where('read', '==', false)
+    .onSnapshot(snap => {
+      snap.docChanges().forEach(change => {
+        if (change.type === 'added') {
+          const alert = change.doc.data();
+          if (alert.type === 'human_requested') {
+            // Dashboard in-app notification
+            showDashboardAlert({
+              id: change.doc.id,
+              type: 'human',
+              title: '🆘 Human Support Requested!',
+              body: `A visitor needs human help — ${alert.page || 'store page'}`,
+              session_id: alert.session_id,
+              time: alert.created_at
+            });
+            // Browser notification
+            sendBrowserNotif(
+              '🆘 Human Support Needed!',
+              `Visitor on ${alert.page || 'your store'} needs help`,
+              () => {
+                nav('support');
+                setTimeout(() => selectSupportChat(alert.session_id), 500);
+              }
+            );
+            // Mark as read
+            change.doc.ref.update({ read: true }).catch(() => {});
+          }
+        }
+      });
+    }, err => console.log('Alerts sync error:', err));
+
+  // New chat sessions (first message from new visitor)
+  let CS_KNOWN_SESSIONS = new Set();
+  let CS_FIRST_LOAD = true;
+  db.collection('support_chats').orderBy('updated_at', 'desc').onSnapshot(snap => {
+    if (CS_FIRST_LOAD) {
+      snap.docs.forEach(d => CS_KNOWN_SESSIONS.add(d.id));
+      CS_FIRST_LOAD = false;
+      return;
+    }
+    snap.docChanges().forEach(change => {
+      if (change.type === 'added' && !CS_KNOWN_SESSIONS.has(change.doc.id)) {
+        CS_KNOWN_SESSIONS.add(change.doc.id);
+        const data = change.doc.data();
+        showDashboardAlert({
+          id: change.doc.id,
+          type: 'new_chat',
+          title: '💬 New Chat!',
+          body: `New visitor started a chat`,
+          session_id: data.session_id,
+          time: data.updated_at
+        });
+        sendBrowserNotif(
+          '💬 New Support Chat',
+          `A visitor started a chat on your store`,
+          () => {
+            nav('support');
+            setTimeout(() => selectSupportChat(data.session_id), 500);
+          }
+        );
+      }
+    });
+  });
+}
+
+// ── Dashboard Alert Banner ────────────────────────────────────
+let CS_ALERTS = [];
+
+function showDashboardAlert(alert) {
+  CS_ALERTS.unshift(alert);
+  renderDashboardAlerts();
+
+  // Also show toast
+  toast(alert.title + ' — ' + alert.body, alert.type === 'human' ? 'error' : 'success');
+
+  // Update nav badge
+  updateSupportNavBadge();
+}
+
+function renderDashboardAlerts() {
+  const el = document.getElementById('csAlertsBanner');
+  if (!el) return;
+  if (!CS_ALERTS.length) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = CS_ALERTS.slice(0, 3).map((a, i) => `
+    <div class="cs-alert-item cs-alert-${a.type}">
+      <span class="cs-alert-icon">${a.type === 'human' ? '🆘' : '💬'}</span>
+      <div class="cs-alert-text">
+        <strong>${a.title}</strong>
+        <span>${a.body}</span>
+      </div>
+      <button class="cs-alert-view" onclick="selectSupportChat('${a.session_id}');csSupportTabSwitch('chats')">View →</button>
+      <button class="cs-alert-dismiss" onclick="dismissAlert(${i})">✕</button>
+    </div>`).join('');
+}
+
+function dismissAlert(idx) {
+  CS_ALERTS.splice(idx, 1);
+  renderDashboardAlerts();
+  updateSupportNavBadge();
+}
+
+function updateSupportNavBadge() {
+  const badge = document.getElementById('supportNavBadge');
+  if (!badge) return;
+  const count = CS_ALERTS.length;
+  badge.textContent = count;
+  badge.style.display = count > 0 ? 'inline-flex' : 'none';
 }

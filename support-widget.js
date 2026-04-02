@@ -107,8 +107,34 @@
     const key = AI_CONFIG.api_key || '';
     if (!key) return 'Sorry, AI abhi available nahi hai. Please baad mein try karein.';
 
-    const systemPrompt = AI_CONFIG.system_prompt ||
-      `You are a helpful customer support agent for ${WIDGET_CONFIG.storeName}. Answer customer questions politely and helpfully. Keep answers concise.`;
+    const basePrompt = `You are a friendly, professional customer support AI for ${WIDGET_CONFIG.storeName}.
+
+LANGUAGE RULE (MOST IMPORTANT):
+- First message is always in English from you
+- From the user's SECOND message onwards, detect their language automatically
+- Supported: English, Urdu, Roman Urdu, Arabic, and any other language
+- Always reply in the EXACT same language the user wrote in — never switch
+
+FORMATTING RULES (always follow):
+- Use bullet points (•) for lists of features, steps, or options
+- Use numbered lists (1. 2. 3.) for step-by-step instructions
+- Use **bold** for important words, product names, prices
+- Keep answers short and clear — max 4-5 lines unless detail is needed
+- Never write long paragraphs — break into bullets
+
+HUMAN ESCALATION RULE (very important):
+- If the user has a complex issue you cannot fully resolve (e.g. payment failed, order missing, refund dispute, account problem, urgent complaint), add [[HUMAN_NEEDED]] at the very END of your reply — nothing after it
+- Only add [[HUMAN_NEEDED]] when the issue genuinely needs a human — not for simple questions
+- Example: "I'm sorry about this issue with your order. Let me explain what I know... [[HUMAN_NEEDED]]"
+
+BEHAVIOR:
+- Be warm, helpful, and concise
+- If you don't know something, say so honestly and offer to help further
+- Never make up prices, policies, or product details not in your knowledge`;
+
+    const systemPrompt = AI_CONFIG.system_prompt
+      ? basePrompt + '\n\nSTORE SPECIFIC INFO:\n' + AI_CONFIG.system_prompt
+      : basePrompt;
 
     const history = chatHistory.slice(-8);
 
@@ -168,6 +194,15 @@
       chatHistory.push({ role: 'assistant', content: reply, time: getTime() });
       appendBubble('bot', reply, getTime(), true);
       saveChat();
+
+      // Check if AI flagged this as a complex issue needing human
+      if (reply.includes('[[HUMAN_NEEDED]]')) {
+        const cleanReply = reply.replace('[[HUMAN_NEEDED]]', '').trim();
+        // Replace last bubble with clean text
+        const bubbles = document.querySelectorAll('#aezoon-messages .aezoon-bubble.bot');
+        if (bubbles.length) bubbles[bubbles.length - 1].querySelector('.aezoon-p, p')?.remove();
+        showHumanSupportOffer(cleanReply);
+      }
     } catch (e) {
       hideTyping();
       isTyping = false;
@@ -175,13 +210,88 @@
     }
   }
 
+  // ── Human Support Offer ───────────────────────────────────────
+  function showHumanSupportOffer(aiMsg) {
+    const msgs = document.getElementById('aezoon-messages');
+    if (!msgs) return;
+
+    // Show AI message first
+    const msgRow = document.createElement('div');
+    msgRow.className = 'aezoon-msg-row bot';
+    msgRow.innerHTML = `
+      <div class="aezoon-bot-avatar"><img src="${WIDGET_CONFIG.iconUrl}" alt="Support"></div>
+      <div class="aezoon-bubble bot">
+        ${formatMessage(aiMsg)}
+        <div class="aezoon-bubble-time">${getTime()}</div>
+      </div>`;
+    msgs.appendChild(msgRow);
+
+    // Show human connect card
+    const card = document.createElement('div');
+    card.className = 'aezoon-human-card';
+    card.id = 'aezoon-human-card';
+    card.innerHTML = `
+      <div class="aezoon-human-icon">👨‍💼</div>
+      <div class="aezoon-human-text">
+        <strong>Connect with a human?</strong>
+        <span>Our support team will reply shortly</span>
+      </div>
+      <div class="aezoon-human-btns">
+        <button class="aezoon-human-yes" onclick="window._aezoonRequestHuman()">✅ Yes, connect me</button>
+        <button class="aezoon-human-no" onclick="this.closest('.aezoon-human-card').remove()">No thanks</button>
+      </div>`;
+    msgs.appendChild(card);
+    scrollBottom();
+  }
+
+  // ── Request Human Support ─────────────────────────────────────
+  window._aezoonRequestHuman = async function () {
+    const card = document.getElementById('aezoon-human-card');
+    if (card) {
+      card.innerHTML = `<div style="text-align:center;padding:0.5rem;color:#0ea5e9;font-size:0.85rem;">
+        ⏳ Connecting you to our support team... We'll reply soon!
+      </div>`;
+    }
+
+    try {
+      // Save human request to Firestore — dashboard will pick this up
+      await db.collection('support_chats').doc(SESSION_ID).set({
+        session_id: SESSION_ID,
+        store: WIDGET_CONFIG.storeName,
+        page: window.location.href,
+        updated_at: Date.now(),
+        human_requested: true,
+        human_requested_at: Date.now(),
+        messages: chatHistory.slice(-40),
+        unread: 999 // force unread badge
+      }, { merge: true });
+
+      // Also write to a dedicated alerts collection for dashboard
+      await db.collection('support_alerts').add({
+        type: 'human_requested',
+        session_id: SESSION_ID,
+        page: window.location.href,
+        store: WIDGET_CONFIG.storeName,
+        created_at: Date.now(),
+        read: false
+      });
+
+      setTimeout(() => {
+        if (card) card.remove();
+        appendBubble('bot', '✅ Done! A human agent has been notified. Please wait — we\'ll reply here shortly.', getTime(), true);
+      }, 1500);
+    } catch (e) {
+      appendBubble('bot', '❌ Could not connect. Please try again.', getTime(), true);
+    }
+  };
+
   // ── DOM Helpers ───────────────────────────────────────────────
   function appendBubble(role, text, time, animate) {
     const msgs = document.getElementById('aezoon-messages');
     if (!msgs) return;
     const row = document.createElement('div');
     row.className = 'aezoon-msg-row ' + (role === 'user' ? 'user' : 'bot');
-    const formatted = text.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+    const formatted = formatMessage(text);
 
     if (role === 'bot') {
       row.innerHTML = `
@@ -197,6 +307,53 @@
     }
     msgs.appendChild(row);
     scrollBottom();
+  }
+
+  // ── Markdown-to-HTML formatter ────────────────────────────────
+  function formatMessage(text) {
+    if (!text) return '';
+    const lines = text.split('\n');
+    let html = '';
+    let inUl = false;
+    let inOl = false;
+
+    lines.forEach(line => {
+      const trimmed = line.trim();
+
+      // Numbered list: "1. " or "1) "
+      const olMatch = trimmed.match(/^(\d+)[.)]\s+(.+)/);
+      // Bullet list: "- ", "* ", "• "
+      const ulMatch = trimmed.match(/^[-*•]\s+(.+)/);
+
+      if (olMatch) {
+        if (inUl) { html += '</ul>'; inUl = false; }
+        if (!inOl) { html += '<ol class="aezoon-list">'; inOl = true; }
+        html += `<li>${inlineFormat(olMatch[2])}</li>`;
+      } else if (ulMatch) {
+        if (inOl) { html += '</ol>'; inOl = false; }
+        if (!inUl) { html += '<ul class="aezoon-list">'; inUl = true; }
+        html += `<li>${inlineFormat(ulMatch[1])}</li>`;
+      } else {
+        if (inUl) { html += '</ul>'; inUl = false; }
+        if (inOl) { html += '</ol>'; inOl = false; }
+        if (trimmed === '') {
+          html += '<br>';
+        } else {
+          html += `<p class="aezoon-p">${inlineFormat(trimmed)}</p>`;
+        }
+      }
+    });
+
+    if (inUl) html += '</ul>';
+    if (inOl) html += '</ol>';
+    return html;
+  }
+
+  function inlineFormat(str) {
+    return str
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/`(.*?)`/g, '<code>$1</code>');
   }
 
   function showTyping() {
