@@ -213,6 +213,8 @@ tr:last-child td { border-bottom:none; }
 /* ── EXPENSE LIST ── */
 .exp-list { display:flex; flex-direction:column; gap:0.8rem; margin-top:1.2rem; }
 .exp-item { display:flex; align-items:center; gap:1rem; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:1rem; box-shadow: var(--shadow-sm); }
+.exp-item-clickable { cursor:pointer; transition:all 0.18s; }
+.exp-item-clickable:hover { border-color:var(--primary); transform:translateX(3px); box-shadow:var(--shadow); }
 .exp-icon { width:40px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0; }
 .exp-icon.expense { background:var(--danger-light); color: var(--danger); }
 .exp-icon.profit { background:var(--success-light); color: var(--success); }
@@ -222,6 +224,43 @@ tr:last-child td { border-bottom:none; }
 .exp-amount { font-weight:600; font-size:1rem; margin-right: 1rem; }
 .exp-amount.expense { color:var(--danger); }
 .exp-amount.profit { color:var(--success); }
+
+/* ── EXPENSE DETAIL POPUP ── */
+.exp-detail-hero { display:flex; align-items:center; gap:1rem; padding:1.4rem 1.2rem; }
+.exp-detail-hero.expense { background:linear-gradient(135deg,rgba(239,68,68,0.08),rgba(239,68,68,0.03)); border-bottom:1px solid var(--border); }
+.exp-detail-hero.profit  { background:linear-gradient(135deg,rgba(16,185,129,0.08),rgba(16,185,129,0.03)); border-bottom:1px solid var(--border); }
+.exp-detail-hero-icon { font-size:2.5rem; flex-shrink:0; }
+.exp-detail-hero-title { font-size:1.1rem; font-weight:700; color:var(--text); margin-bottom:0.2rem; }
+.exp-detail-hero-amount { font-size:1.5rem; font-weight:800; }
+.exp-detail-hero.expense .exp-detail-hero-amount { color:var(--danger); }
+.exp-detail-hero.profit  .exp-detail-hero-amount { color:var(--success); }
+.exp-detail-hero-type { font-size:0.78rem; color:var(--muted); margin-top:0.2rem; }
+
+.exp-detail-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:0; border-bottom:1px solid var(--border); }
+.exp-ds { padding:0.8rem; text-align:center; border-right:1px solid var(--border); }
+.exp-ds:last-child { border-right:none; }
+.exp-ds-val { font-size:1.1rem; font-weight:700; color:var(--primary); }
+.exp-ds-label { font-size:0.65rem; color:var(--muted); text-transform:uppercase; font-weight:600; margin-top:2px; }
+
+.exp-detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.6rem; padding:1rem 1.2rem; }
+.exp-detail-row { display:flex; flex-direction:column; gap:0.2rem; background:var(--surface2); padding:0.6rem 0.8rem; border-radius:var(--radius-sm); }
+.exp-dl { font-size:0.68rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:0.03em; }
+.exp-dv { font-size:0.88rem; color:var(--text); font-weight:500; }
+
+.exp-detail-section { padding:0 1.2rem 1rem; }
+.exp-detail-section-title { font-size:0.75rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.6rem; padding-top:0.8rem; border-top:1px solid var(--border); }
+
+.exp-insight-list { display:flex; flex-direction:column; gap:0.5rem; }
+.exp-insight { font-size:0.82rem; color:var(--text); background:var(--surface2); border-radius:var(--radius-sm); padding:0.6rem 0.8rem; border-left:3px solid var(--border); line-height:1.5; }
+.exp-insight.warn { border-left-color:var(--warning); background:var(--warning-light); }
+.exp-insight.good { border-left-color:var(--success); background:var(--success-light); }
+
+.exp-history-list { display:flex; flex-direction:column; gap:0.4rem; max-height:160px; overflow-y:auto; }
+.exp-history-item { display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0.8rem; background:var(--surface2); border-radius:var(--radius-sm); font-size:0.82rem; color:var(--muted); }
+.exp-history-item.current { background:var(--primary-light); border:1px solid var(--primary); color:var(--text); }
+.exp-current-badge { background:var(--primary); color:#fff; font-size:0.62rem; font-weight:700; padding:1px 6px; border-radius:10px; }
+
+.exp-detail-actions { display:flex; gap:0.8rem; padding:1rem 1.2rem; border-top:1px solid var(--border); justify-content:flex-end; }
 
 /* ── CUSTOMER TAGS ── */
 .cust-tag { display:inline-flex; align-items:center; gap:0.2rem; padding:0.18rem 0.5rem; border-radius:20px; font-size:0.7rem; font-weight:700; white-space:nowrap; }
@@ -1517,6 +1556,17 @@ tr:last-child td { border-bottom:none; }
   </div>
 </div>
 
+<!-- EXPENSE DETAIL MODAL -->
+<div class="modal-bg" id="expDetailModal">
+  <div class="modal" style="max-width:560px;padding:0;overflow:hidden;">
+    <div class="modal-header" style="padding:1rem 1.2rem;border-bottom:1px solid var(--border);">
+      <h3>💸 Expense Details</h3>
+      <button class="modal-close" onclick="closeModal('expDetailModal')">✕</button>
+    </div>
+    <div id="expDetailContent" style="max-height:80vh;overflow-y:auto;"></div>
+  </div>
+</div>
+
 <!-- CUSTOMER MODAL -->
 <div class="modal-bg" id="customerModal">
   <div class="modal" style="max-width:500px;">
@@ -2600,6 +2650,7 @@ function openExpModal() {
   document.getElementById('e_notes').value=''; 
   document.getElementById('e_type').value='expense';
   document.getElementById('e_date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('expModal').dataset.editId = '';
   document.getElementById('expModal').classList.add('open');
 }
 
@@ -2610,6 +2661,17 @@ function saveExpense() {
   if(!t||!a) return toast('Fill required fields','error');
   
   const finalAmount = parseFloat(a) + (parseFloat(tax) || 0);
+  const editId = document.getElementById('expModal').dataset.editId;
+
+  if(editId) {
+    // Edit mode
+    const expData = { title:t, type:document.getElementById('e_type').value, amount:finalAmount, tax:parseFloat(tax)||0, date:document.getElementById('e_date').value||new Date().toISOString().split('T')[0], notes:document.getElementById('e_notes').value, updated_at:Date.now() };
+    db.collection("expenses").doc(editId).update(expData)
+      .then(()=>{ closeModal('expModal'); toast('Updated!','success'); document.getElementById('expModal').dataset.editId=''; })
+      .catch(e=>toast('Error: '+e.message,'error'));
+    return;
+  }
+
   const expData = { id:'e_'+Date.now(), title:t, type:document.getElementById('e_type').value, amount: finalAmount, tax: parseFloat(tax) || 0, date:document.getElementById('e_date').value||new Date().toISOString().split('T')[0], notes:document.getElementById('e_notes').value, created_at:Date.now() };
   
   const exps = getExpenses();
@@ -2623,29 +2685,157 @@ function renderExpenses() {
   const exps = getExpenses().sort((a,b)=>b.created_at-a.created_at);
   const te = exps.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
   const ti = exps.filter(e=>e.type==='profit').reduce((s,e)=>s+e.amount,0);
+  const thisMonth = new Date().toISOString().substring(0,7);
+  const monthExps = exps.filter(e=>e.type==='expense'&&(e.date||'').startsWith(thisMonth));
+  const monthTotal = monthExps.reduce((s,e)=>s+e.amount,0);
+  const avgExp = exps.filter(e=>e.type==='expense').length ? te / exps.filter(e=>e.type==='expense').length : 0;
+  const largest = exps.filter(e=>e.type==='expense').sort((a,b)=>b.amount-a.amount)[0];
 
   document.getElementById('expStats').innerHTML = `
-    <div class="stat-card c4"><div class="stat-icon" style="color:var(--danger)">📉</div><div class="stat-label">Total Expenses</div><div class="stat-val">AED ${fmt(te)}</div></div>
-    <div class="stat-card c2"><div class="stat-icon" style="color:var(--success)">📈</div><div class="stat-label">Other Income</div><div class="stat-val">AED ${fmt(ti)}</div></div>
-    <div class="stat-card c1"><div class="stat-icon" style="color:var(--primary)">📊</div><div class="stat-label">Net</div><div class="stat-val">AED ${fmt(ti-te)}</div></div>
+    <div class="stat-card c4"><div class="stat-icon" style="color:var(--danger)">�</div><div class="stat-label">Total Expenses</div><div class="stat-val">AED ${fmt(te)}</div><div class="stat-sub">${exps.filter(e=>e.type==='expense').length} entries</div></div>
+    <div class="stat-card c2"><div class="stat-icon" style="color:var(--success)">📈</div><div class="stat-label">Other Income</div><div class="stat-val">AED ${fmt(ti)}</div><div class="stat-sub">${exps.filter(e=>e.type==='profit').length} entries</div></div>
+    <div class="stat-card c1"><div class="stat-icon" style="color:var(--primary)">📊</div><div class="stat-label">Net</div><div class="stat-val" style="color:${ti-te>=0?'var(--success)':'var(--danger)'}">AED ${fmt(ti-te)}</div></div>
+    <div class="stat-card c3"><div class="stat-icon" style="color:var(--warning)">📅</div><div class="stat-label">This Month</div><div class="stat-val">AED ${fmt(monthTotal)}</div><div class="stat-sub">${monthExps.length} expenses</div></div>
+    <div class="stat-card c5"><div class="stat-icon" style="color:var(--info)">📐</div><div class="stat-label">Avg Expense</div><div class="stat-val">AED ${fmt(avgExp)}</div></div>
   `;
   const list = document.getElementById('expList');
   if(!exps.length) return list.innerHTML = '<div class="empty">No entries yet</div>';
   list.innerHTML = exps.map(e=>`
-    <div class="exp-item">
+    <div class="exp-item exp-item-clickable" onclick="showExpenseDetail('${e.id}')">
       <div class="exp-icon ${e.type}">${e.type==='expense'?'💸':'💰'}</div>
       <div class="exp-info">
         <div class="exp-title" style="color:var(--text)">${e.title}</div>
         <div class="exp-date">
-          ${e.date} 
-          ${e.tax > 0 ? `<span style="color:var(--warning); font-weight:500;"> · Includes AED ${fmt(e.tax)} Tax</span>` : ''} 
+          ${e.date}
+          ${e.tax > 0 ? `<span style="color:var(--warning);font-weight:500;"> · Tax AED ${fmt(e.tax)}</span>` : ''}
           ${e.notes?' · '+e.notes:''}
         </div>
       </div>
       <div class="exp-amount ${e.type}">${e.type==='expense'?'−':'+'} AED ${fmt(e.amount)}</div>
-      <button class="btn btn-outline btn-sm" onclick="DataManager.deleteExpense('${e.id}')">🗑</button>
+      <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();DataManager.deleteExpense('${e.id}')">🗑</button>
     </div>
   `).join('');
+}
+
+// ── Expense Detail Popup ──────────────────────────────────────
+function showExpenseDetail(id) {
+  const exps = getExpenses();
+  const e = exps.find(x=>x.id===id);
+  if(!e) return;
+
+  const allSameType = exps.filter(x=>x.type===e.type);
+  const allSameTitle = exps.filter(x=>x.title.toLowerCase()===e.title.toLowerCase());
+  const totalSameTitle = allSameTitle.reduce((s,x)=>s+x.amount,0);
+  const avgSameTitle = allSameTitle.length ? totalSameTitle/allSameTitle.length : 0;
+  const rank = [...exps.filter(x=>x.type===e.type)].sort((a,b)=>b.amount-a.amount).findIndex(x=>x.id===id)+1;
+  const totalType = allSameType.reduce((s,x)=>s+x.amount,0);
+  const pctOfTotal = totalType > 0 ? ((e.amount/totalType)*100).toFixed(1) : 0;
+  const isAboveAvg = e.amount > (totalType/allSameType.length);
+  const dayOfWeek = e.date ? new Date(e.date).toLocaleDateString('en-US',{weekday:'long'}) : '—';
+  const monthName = e.date ? new Date(e.date).toLocaleDateString('en-US',{month:'long',year:'numeric'}) : '—';
+  const daysAgo = e.date ? Math.floor((Date.now()-new Date(e.date).getTime())/(1000*60*60*24)) : '—';
+  const addedAgo = e.created_at ? Math.floor((Date.now()-e.created_at)/(1000*60*60*24)) : '—';
+  const sameMonthExps = exps.filter(x=>x.type==='expense'&&(x.date||'').substring(0,7)===(e.date||'').substring(0,7));
+  const sameMonthTotal = sameMonthExps.reduce((s,x)=>s+x.amount,0);
+  const isRecurring = allSameTitle.length > 1;
+  const netAfter = exps.filter(x=>x.type==='profit').reduce((s,x)=>s+x.amount,0) - exps.filter(x=>x.type==='expense').reduce((s,x)=>s+x.amount,0);
+
+  const modal = document.getElementById('expDetailModal');
+  document.getElementById('expDetailContent').innerHTML = `
+    <!-- Header -->
+    <div class="exp-detail-hero ${e.type}">
+      <div class="exp-detail-hero-icon">${e.type==='expense'?'💸':'💰'}</div>
+      <div class="exp-detail-hero-info">
+        <div class="exp-detail-hero-title">${e.title}</div>
+        <div class="exp-detail-hero-amount">${e.type==='expense'?'−':'+'} AED ${fmt(e.amount)}</div>
+        <div class="exp-detail-hero-type">${e.type==='expense'?'Expense':'Income'} · ${monthName}</div>
+      </div>
+    </div>
+
+    <!-- Quick Stats Row -->
+    <div class="exp-detail-stats">
+      <div class="exp-ds"><div class="exp-ds-val">#${rank}</div><div class="exp-ds-label">Rank by Amount</div></div>
+      <div class="exp-ds"><div class="exp-ds-val">${pctOfTotal}%</div><div class="exp-ds-label">of Total ${e.type==='expense'?'Expenses':'Income'}</div></div>
+      <div class="exp-ds"><div class="exp-ds-val">${allSameTitle.length}</div><div class="exp-ds-label">Times Added</div></div>
+      <div class="exp-ds"><div class="exp-ds-val">${daysAgo}d</div><div class="exp-ds-label">Days Ago</div></div>
+    </div>
+
+    <!-- Details Grid -->
+    <div class="exp-detail-grid">
+      <div class="exp-detail-row"><span class="exp-dl">📅 Date</span><span class="exp-dv">${e.date||'—'}</span></div>
+      <div class="exp-detail-row"><span class="exp-dl">📆 Day</span><span class="exp-dv">${dayOfWeek}</span></div>
+      <div class="exp-detail-row"><span class="exp-dl">🕐 Added</span><span class="exp-dv">${addedAgo === 0 ? 'Today' : addedAgo+'d ago'}</span></div>
+      <div class="exp-detail-row"><span class="exp-dl">🏷️ Type</span><span class="exp-dv"><span class="badge ${e.type==='expense'?'badge-cancel':'badge-delivered'}">${e.type==='expense'?'Expense':'Income'}</span></span></div>
+      <div class="exp-detail-row"><span class="exp-dl">💵 Base Amount</span><span class="exp-dv">AED ${fmt(e.amount - (e.tax||0))}</span></div>
+      ${e.tax>0?`<div class="exp-detail-row"><span class="exp-dl">🧾 Tax</span><span class="exp-dv" style="color:var(--warning)">AED ${fmt(e.tax)}</span></div>`:''}
+      <div class="exp-detail-row"><span class="exp-dl">💰 Total Paid</span><span class="exp-dv" style="font-weight:700;color:${e.type==='expense'?'var(--danger)':'var(--success)'}">AED ${fmt(e.amount)}</span></div>
+      ${e.notes?`<div class="exp-detail-row" style="grid-column:1/-1"><span class="exp-dl">📝 Notes</span><span class="exp-dv">${e.notes}</span></div>`:''}
+    </div>
+
+    <!-- Insights -->
+    <div class="exp-detail-section">
+      <div class="exp-detail-section-title">📊 Insights</div>
+      <div class="exp-insight-list">
+        <div class="exp-insight ${isAboveAvg?'warn':'good'}">
+          ${isAboveAvg?'⚠️':'✅'} This is <strong>${isAboveAvg?'above':'below'}</strong> your average ${e.type} of AED ${fmt(totalType/allSameType.length)}
+        </div>
+        <div class="exp-insight">
+          📅 In <strong>${monthName}</strong>, total expenses were <strong>AED ${fmt(sameMonthTotal)}</strong> (${sameMonthExps.length} entries)
+        </div>
+        ${isRecurring?`<div class="exp-insight good">🔁 Recurring — "<strong>${e.title}</strong>" added <strong>${allSameTitle.length} times</strong>, total AED ${fmt(totalSameTitle)}, avg AED ${fmt(avgSameTitle)}</div>`:''}
+        <div class="exp-insight">
+          📈 Current net balance: <strong style="color:${netAfter>=0?'var(--success)':'var(--danger)'}">AED ${fmt(netAfter)}</strong>
+        </div>
+        <div class="exp-insight">
+          🏆 This expense is <strong>#${rank}</strong> out of <strong>${allSameType.length}</strong> ${e.type} entries by amount
+        </div>
+      </div>
+    </div>
+
+    <!-- History of same title -->
+    ${allSameTitle.length > 1 ? `
+    <div class="exp-detail-section">
+      <div class="exp-detail-section-title">🔁 "${e.title}" History (${allSameTitle.length} times)</div>
+      <div class="exp-history-list">
+        ${allSameTitle.sort((a,b)=>b.created_at-a.created_at).map(x=>`
+          <div class="exp-history-item ${x.id===id?'current':''}">
+            <span>${x.date||'—'}</span>
+            <span style="font-weight:600;color:${x.type==='expense'?'var(--danger)':'var(--success)'}">AED ${fmt(x.amount)}</span>
+            ${x.id===id?'<span class="exp-current-badge">Current</span>':''}
+          </div>`).join('')}
+      </div>
+    </div>` : ''}
+
+    <!-- Actions -->
+    <div class="exp-detail-actions">
+      <button class="btn btn-outline" onclick="expDetailEdit('${e.id}')">✏️ Edit</button>
+      <button class="btn btn-danger" onclick="expDetailDelete('${e.id}')">🗑 Delete</button>
+    </div>
+  `;
+  modal.classList.add('open');
+}
+
+function expDetailEdit(id) {
+  closeModal('expDetailModal');
+  // Pre-fill the add modal with existing data
+  const e = getExpenses().find(x=>x.id===id);
+  if(!e) return;
+  document.getElementById('e_title').value = e.title||'';
+  document.getElementById('e_amount').value = e.amount - (e.tax||0);
+  document.getElementById('e_tax').value = e.tax||'';
+  document.getElementById('e_notes').value = e.notes||'';
+  document.getElementById('e_type').value = e.type||'expense';
+  document.getElementById('e_date').value = e.date||'';
+  if(e.tax>0){ document.getElementById('taxRow').style.display='flex'; document.getElementById('taxArrow').textContent='▼'; }
+  // Store edit ID
+  document.getElementById('expModal').dataset.editId = id;
+  document.getElementById('expModal').classList.add('open');
+}
+
+function expDetailDelete(id) {
+  if(!confirm('Delete this entry?')) return;
+  closeModal('expDetailModal');
+  DataManager.deleteExpense(id);
 }
 
 function deleteExpense(id) {

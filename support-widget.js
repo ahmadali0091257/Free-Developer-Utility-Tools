@@ -331,10 +331,16 @@ BEHAVIOR:
         <span>Our support team will reply shortly</span>
       </div>
       <div class="aezoon-human-btns">
-        <button class="aezoon-human-yes" onclick="window._aezoonRequestHuman()">✅ Yes, connect me</button>
-        <button class="aezoon-human-no" onclick="this.closest('.aezoon-human-card').remove()">No thanks</button>
+        <button class="aezoon-human-yes" id="aezoon-human-yes-btn">✅ Yes, connect me</button>
+        <button class="aezoon-human-no" id="aezoon-human-no-btn">No thanks</button>
       </div>`;
     msgs.appendChild(card);
+
+    // CSP-safe event listeners
+    document.getElementById('aezoon-human-yes-btn')?.addEventListener('click', window._aezoonRequestHuman);
+    document.getElementById('aezoon-human-no-btn')?.addEventListener('click', () => {
+      document.getElementById('aezoon-human-card')?.remove();
+    });
     scrollBottom();
   }
 
@@ -509,14 +515,18 @@ BEHAVIOR:
 
   // ── Build Widget HTML ─────────────────────────────────────────
   function buildWidget() {
-    // CSS
+    // CSS — hardcoded URL so it always loads correctly
     if (!document.getElementById('aezoon-widget-css')) {
       const link = document.createElement('link');
       link.id = 'aezoon-widget-css';
       link.rel = 'stylesheet';
-      const scripts = document.querySelectorAll('script[src*="support-widget"]');
-      const base = scripts.length ? scripts[scripts.length - 1].src.replace('support-widget.js', '') : '';
-      link.href = base + 'support-widget.css';
+      // Auto-detect base URL from script tag
+      const scriptTags = document.querySelectorAll('script[src*="support-widget"]');
+      if (scriptTags.length) {
+        link.href = scriptTags[scriptTags.length - 1].src.replace('support-widget.js', 'support-widget.css');
+      } else {
+        link.href = 'https://ahmadali0091257.github.io/Free-Developer-Utility-Tools/support-widget.css';
+      }
       document.head.appendChild(link);
     }
 
@@ -546,16 +556,14 @@ BEHAVIOR:
             <span class="aezoon-status-dot"></span> Online — Replies instantly
           </div>
         </div>
-        <button id="aezoon-close-btn" onclick="document.getElementById('aezoon-widget-btn').click()" aria-label="Close">✕</button>
+        <button id="aezoon-close-btn" aria-label="Close">✕</button>
       </div>
       <div id="aezoon-messages">
         <div class="aezoon-date-sep"><span>Today</span></div>
       </div>
       <div id="aezoon-input-area">
-        <textarea id="aezoon-input" placeholder="${WIDGET_CONFIG.placeholder}" rows="1"
-          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();window._aezoonSend()}"
-          oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
-        <button id="aezoon-send-btn" onclick="window._aezoonSend()" aria-label="Send">
+        <textarea id="aezoon-input" placeholder="${WIDGET_CONFIG.placeholder}" rows="1"></textarea>
+        <button id="aezoon-send-btn" aria-label="Send">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         </button>
       </div>
@@ -564,6 +572,20 @@ BEHAVIOR:
 
     document.body.appendChild(btn);
     document.body.appendChild(box);
+
+    // Event listeners — no inline onclick (Shopify CSP safe)
+    document.getElementById('aezoon-close-btn').addEventListener('click', toggleChat);
+    document.getElementById('aezoon-send-btn').addEventListener('click', sendMessage);
+    document.getElementById('aezoon-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+      e.target.style.height = 'auto';
+      e.target.style.height = Math.min(e.target.scrollHeight, 80) + 'px';
+    });
+    document.getElementById('aezoon-input').addEventListener('input', e => {
+      e.target.style.height = 'auto';
+      e.target.style.height = Math.min(e.target.scrollHeight, 80) + 'px';
+    });
+
     window._aezoonSend = sendMessage;
   }
 
