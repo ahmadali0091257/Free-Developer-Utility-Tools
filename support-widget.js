@@ -1,16 +1,16 @@
 /**
- * Aezoon Customer Support Widget
- * Shopify mein add karne ka tarika:
- *   1. Firebase config aur widget config neeche set karo
- *   2. Yeh script apne Shopify theme ke <head> ya </body> se pehle add karo:
- *      <link rel="stylesheet" href="YOUR_HOST/support-widget.css">
- *      <script src="YOUR_HOST/support-widget.js"></script>
+ * Aezoon Customer Support Widget v3.0
+ * No external dependencies — works on Shopify, any website
+ * Add to Shopify theme.liquid before </body>:
+ *   <script src="YOUR_GITHUB_URL/support-widget.js"></script>
  */
 
 (function () {
   'use strict';
 
-  // ── CONFIG — Yahan apni values dalo ──────────────────────────
+  console.log('[Aezoon] Widget v3.0 loading...');
+
+  // ── CONFIG ────────────────────────────────────────────────────
   const WIDGET_CONFIG = {
     storeName: 'Aezoon Store',
     botName: 'Aezoon Support',
@@ -54,7 +54,7 @@
   let chatHistory = [];
   let isTyping = false;
   let chatOpen = false;
-  let isHumanModeActive = false;
+  // isHumanModeActive declared later near sendMessage
 
   // ── AI Memory — visitor ka naam, language, preferences ────────
   const AI_MEMORY = {
@@ -291,7 +291,7 @@ BEHAVIOR:
     return scored.filter(c => c.score > 0).sort((a, b) => b.score - a.score).slice(0, 2);
   }
 
-  let isHumanModeActive = false; // synced from Firestore listener
+  let isHumanModeActive = false; // synced from Firestore listener — declared once here
 
   // ── Send Message ──────────────────────────────────────────────
   async function sendMessage() {
@@ -804,10 +804,13 @@ ol.aezoon-list{list-style:decimal;padding-left:20px}
 
   // ── Init ──────────────────────────────────────────────────────
   function init() {
+    console.log('[Aezoon] Widget init started');
     buildWidget();
-    loadAIConfig().then(() => loadHistory()).catch(() => {
+    loadAIConfig().then(() => loadHistory()).catch(e => {
+      console.log('[Aezoon] Config load error:', e);
       appendBubble('bot', WIDGET_CONFIG.welcomeMsg, getTime(), false);
     });
+    console.log('[Aezoon] Widget button added to page');
   }
 
   if (document.readyState === 'loading') {
