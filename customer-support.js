@@ -110,12 +110,15 @@ function updateSupportStats() {
   const today = new Date().toISOString().split('T')[0];
   const todayChats = CS_CHATS.filter(c => new Date(c.updated_at || 0).toISOString().split('T')[0] === today).length;
   const totalMsgs = CS_CHATS.reduce((s, c) => s + (c.messages || []).length, 0);
+  // IMPROVEMENT: Human requests count bhi dikhao
+  const humanReqs = CS_CHATS.filter(c => c.human_requested && !c.human_mode).length;
   const el = document.getElementById('csSupportStats');
   if (!el) return;
   el.innerHTML = `
     <div class="cs-stat"><div class="cs-stat-val">${total}</div><div class="cs-stat-label">Sessions</div></div>
     <div class="cs-stat"><div class="cs-stat-val">${todayChats}</div><div class="cs-stat-label">Today</div></div>
     <div class="cs-stat"><div class="cs-stat-val">${totalMsgs}</div><div class="cs-stat-label">Messages</div></div>
+    ${humanReqs > 0 ? `<div class="cs-stat"><div class="cs-stat-val" style="color:var(--danger);">${humanReqs}</div><div class="cs-stat-label">Need Help</div></div>` : ''}
   `;
 }
 
@@ -135,11 +138,20 @@ function selectSupportChat(sessionId) {
 
 function renderSupportChatDetail(chat) {
   const msgs = chat.messages || [];
+  const memory = chat.ai_memory || {};
   const shortId = (chat.session_id || '').replace('aezoon_sess_', '#').substring(0, 14);
-  document.getElementById('csChatHeaderName').textContent = 'Visitor ' + shortId;
+
+  // FIX 1: Visitor ka naam show karo agar AI memory mein hai
+  const visitorLabel = memory.name ? `👤 ${memory.name}` : 'Visitor ' + shortId;
+  document.getElementById('csChatHeaderName').textContent = visitorLabel;
+
+  // FIX 2: Header mein zyada info — language, sentiment bhi
+  const sentimentMap = { angry: '😠 Angry', happy: '😊 Happy', confused: '😕 Confused' };
+  const sentimentText = memory.sentiment ? ` · ${sentimentMap[memory.sentiment] || memory.sentiment}` : '';
+  const langText = memory.language ? ` · 🌐 ${memory.language}` : '';
   document.getElementById('csChatHeaderSub').textContent =
     (chat.page || 'Unknown page') + ' · ' + msgs.length + ' messages' +
-    (chat.human_mode ? ' · 👨‍💼 Human Active' : '');
+    (chat.human_mode ? ' · 👨‍💼 Human Active' : '') + langText + sentimentText;
 
   // Tag buttons
   const tagBar = document.getElementById('csChatTagBar');
@@ -156,22 +168,42 @@ function renderSupportChatDetail(chat) {
   const container = document.getElementById('csChatMessages');
   if (!container) return;
 
-  const humanBanner = chat.human_requested
-    ? `<div class="cs-human-alert-banner">🆘 This visitor requested human support — reply below</div>`
-    : '';
+  // FIX 3: Human requested banner + angry visitor warning
+  let topBanners = '';
+  if (chat.human_requested) {
+    topBanners += `<div class="cs-human-alert-banner">🆘 Visitor ne human support maanga — neeche reply karo</div>`;
+  }
+  if (memory.sentiment === 'angry') {
+    topBanners += `<div class="cs-angry-banner">😠 Visitor naraaz lag raha hai — carefully jawab dena</div>`;
+  }
 
-  container.innerHTML = humanBanner + msgs.map(m => {
+  // FIX 4: Internal notes bhi render karo — pehle invisible the
+  container.innerHTML = topBanners + msgs.map(m => {
     const isUser = m.role === 'user';
     const isAgent = m.role === 'human_agent';
+    const isNote = m.role === 'internal_note';
+
     const formatted = (m.content || '')
       .replace(/\[\[HUMAN_NEEDED\]\]/g, '')
       .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
       .replace(/\n/g, '<br>');
 
+    // FIX 4: Internal notes — alag style mein dikhao
+    if (isNote) {
+      return `<div class="cs-msg-row cs-note-row">
+        <div class="cs-internal-note">
+          <span class="cs-note-icon">📝</span>
+          <span class="cs-note-agent">${escHtml(m.agent || 'Admin')}:</span>
+          <span>${escHtml(m.content || '')}</span>
+          <span class="cs-bubble-time" style="margin-left:auto;">${m.time || ''}</span>
+        </div>
+      </div>`;
+    }
+
     if (isAgent) {
       return `<div class="cs-msg-row user">
         <div class="cs-bubble cs-bubble-agent">
-          <div class="cs-agent-badge">👨‍💼 ${m.agent_name || 'Support Agent'}</div>
+          <div class="cs-agent-badge">👨‍💼 ${escHtml(m.agent_name || 'Support Agent')}</div>
           ${formatted}
           <div class="cs-bubble-time">${m.time || ''}</div>
         </div>
@@ -187,11 +219,28 @@ function renderSupportChatDetail(chat) {
   const check = document.getElementById('csHumanModeCheck');
   const replyArea = document.getElementById('csHumanReplyArea');
   const label = document.getElementById('csHumanModeLabel');
+  const pill = document.getElementById('csModePill');
+  const pillIcon = document.getElementById('csModePillIcon');
   const isHuman = chat.human_mode || false;
   CS_HUMAN_MODE = isHuman;
   if (check) check.checked = isHuman;
-  if (label) label.textContent = isHuman ? '👨‍💼 Human Mode' : '🤖 AI Mode';
+  if (label) label.textContent = isHuman ? 'Human Mode' : 'AI Mode';
+  if (pillIcon) pillIcon.textContent = isHuman ? '👨‍💼' : '🤖';
+  if (pill) { isHuman ? pill.classList.add('human-on') : pill.classList.remove('human-on'); }
   if (replyArea) replyArea.style.display = isHuman ? 'flex' : 'none';
+
+  // Update header avatar with visitor initial
+  const avatarEl = document.getElementById('csHeaderAvatar');
+  if (avatarEl) {
+    const initial = memory.name ? memory.name[0].toUpperCase() : shortId.replace('#','')[0] || '?';
+    avatarEl.textContent = initial;
+  }
+
+  // FIX 5: Human mode auto-ON karo agar visitor ne request kiya tha
+  if (chat.human_requested && !isHuman) {
+    const replyInp = document.getElementById('csHumanReplyInp');
+    if (replyInp) replyInp.placeholder = '⚠️ Visitor ne human support maanga — Human Mode ON karo upar se';
+  }
 }
 
 function setChatTag(tag) {
@@ -391,33 +440,44 @@ async function callPromptUpgradeAI(userMsg) {
     docsContext += '\n--- END DOCUMENTS ---';
   }
 
-  const systemPrompt = `You are an expert AI Prompt Engineer specializing in e-commerce customer support.
+  // Include KB cards context for smarter prompt generation
+  const kbSummary = typeof KB_CARDS !== 'undefined' && KB_CARDS.length
+    ? '\n\nCURRENT KB CARDS (' + KB_CARDS.length + ' cards):\n' + KB_CARDS.map(c => `• ${c.icon || '📄'} ${c.name}: ${(c.keywords || '').substring(0, 60)}`).join('\n')
+    : '\n\n(No KB cards yet)';
+
+  const systemPrompt = `You are an expert AI Prompt Engineer for e-commerce customer support.
 
 YOUR ROLE:
-- Analyze the user's store information and current system prompt
-- Ask smart, targeted questions to understand what's missing
-- Build SHORT, EFFECTIVE system prompts (max 300 words) that cover all key info
-- Don't repeat yourself — each update should ADD value, not duplicate
+- Analyze store info, uploaded files, and current system prompt
+- Ask smart targeted questions — ONE at a time
+- Build SHORT, EFFECTIVE prompts (max 300 words)
+- Check if KB cards are referenced properly in the prompt
 
-CURRENT SYSTEM PROMPT IN USE:
+CURRENT SYSTEM PROMPT:
 """
-${currentPrompt || '(Empty — no prompt set yet)'}
+${currentPrompt || '(Empty — not set yet)'}
 """
 ${docsContext}
+${kbSummary}
 
-RULES FOR PROMPT GENERATION:
-1. Keep prompts SHORT and DENSE — no fluff, only key facts
-2. Cover: store name, products, tone, policies, shipping, returns, contact
-3. When you have enough info, generate the final prompt wrapped in: \`\`\`prompt\n...\`\`\`
-4. After generating, ask: "Kuch aur add karna hai?" to check if more info needed
-5. If files were uploaded, extract ONLY the most important facts (store name, policies, contact, shipping rules)
-6. Never add placeholder text like "[Store Name]" — only use real info the user provided
-7. If info is missing, ask ONE specific question at a time
+SMART ANALYSIS RULES:
+1. Files uploaded → FIRST summarize what info you found, THEN list what's missing
+2. Check coverage: store name, products, tone, policies, shipping, returns, contact info
+3. If KB cards exist → prompt must tell AI to use them
+4. Ask ONE specific question at a time — never multiple
+5. When enough info → generate: \`\`\`prompt\n...\`\`\`
+6. After generating → ask "Kuch aur add karna hai? Ya KB cards bhi improve karoon?"
+7. NEVER use placeholders like "[Store Name]" — only real info
+
+PROMPT QUALITY:
+- Dense and specific — no fluff
+- Include: store identity, products, tone, policies, KB card instruction, language detection
+- Max 300 words
 
 CONVERSATION STYLE:
-- Respond in the same language as the user (Roman Urdu / English / Urdu)
-- Be direct and efficient — no long explanations
-- After analyzing files, summarize what you found and what's still needed`;
+- Reply in same language as user (Roman Urdu / English / Urdu)
+- After file analysis: "Yeh mila: [summary]. Missing: [gaps]. Pehle [X] batao."
+- Be direct and confident`;
 
   const history = CS_PROMPT_HISTORY.slice(-10);
 
@@ -1136,9 +1196,13 @@ function toggleHumanMode(enabled) {
   CS_HUMAN_MODE = enabled;
   const label = document.getElementById('csHumanModeLabel');
   const replyArea = document.getElementById('csHumanReplyArea');
+  const pill = document.getElementById('csModePill');
+  const pillIcon = document.getElementById('csModePillIcon');
 
   if (enabled) {
-    if (label) label.textContent = '👨‍💼 Human Mode';
+    if (label) label.textContent = 'Human Mode';
+    if (pillIcon) pillIcon.textContent = '👨‍💼';
+    if (pill) pill.classList.add('human-on');
     if (replyArea) replyArea.style.display = 'flex';
     setTimeout(() => document.getElementById('csHumanReplyInp')?.focus(), 100);
     const chat = CS_CHATS.find(c => c.session_id === CS_SELECTED_SESSION);
@@ -1147,9 +1211,11 @@ function toggleHumanMode(enabled) {
         .update({ human_mode: true, human_mode_at: Date.now() })
         .catch(() => {});
     }
-    toast('Human mode ON — AI paused for this chat', 'success');
+    toast('👨‍💼 Human mode ON — AI paused', 'success');
   } else {
-    if (label) label.textContent = '🤖 AI Mode';
+    if (label) label.textContent = 'AI Mode';
+    if (pillIcon) pillIcon.textContent = '🤖';
+    if (pill) pill.classList.remove('human-on');
     if (replyArea) replyArea.style.display = 'none';
     const chat = CS_CHATS.find(c => c.session_id === CS_SELECTED_SESSION);
     if (chat) {
@@ -1157,7 +1223,7 @@ function toggleHumanMode(enabled) {
         .update({ human_mode: false })
         .catch(() => {});
     }
-    toast('AI mode restored', 'success');
+    toast('🤖 AI mode restored', 'success');
   }
 }
 
@@ -1166,13 +1232,17 @@ async function sendHumanReply() {
   const inp = document.getElementById('csHumanReplyInp');
   const text = inp?.value.trim();
   if (!text) return;
-  if (!CS_SELECTED_SESSION) return;
+  if (!CS_SELECTED_SESSION) return toast('Pehle koi chat select karo', 'warning');
+
+  // FIX: Send button disable karo double-send se bachne ke liye
+  const sendBtn = document.querySelector('.cs-human-send-btn');
+  if (sendBtn) sendBtn.disabled = true;
 
   inp.value = '';
   inp.style.height = 'auto';
 
   const chat = CS_CHATS.find(c => c.session_id === CS_SELECTED_SESSION);
-  if (!chat) return;
+  if (!chat) { if (sendBtn) sendBtn.disabled = false; return; }
 
   const time = getCSTime();
   const newMsg = {
@@ -1189,11 +1259,17 @@ async function sendHumanReply() {
       messages: updatedMsgs,
       updated_at: Date.now(),
       unread: 0,
-      last_human_reply: Date.now()
+      last_human_reply: Date.now(),
+      // FIX: human_requested clear karo jab reply ho jaye
+      human_requested: false
     });
     toast('Reply sent ✓', 'success');
+    // FIX: Reply ke baad input pe focus wapas aao
+    setTimeout(() => inp?.focus(), 100);
   } catch (e) {
-    toast('Error: ' + e.message, 'error');
-    inp.value = text;
+    toast('Reply send nahi hua: ' + e.message, 'error');
+    inp.value = text; // restore on error
+  } finally {
+    if (sendBtn) sendBtn.disabled = false;
   }
 }

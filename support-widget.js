@@ -136,6 +136,10 @@
     if (data && data.messages) {
       chatHistory = data.messages;
       chatHistory.forEach(m => appendBubble(m.role, m.content, m.time, false));
+      // FIX: restore AI memory from Firestore so page refresh pe naam/language na bhule
+      if (data.ai_memory) {
+        Object.assign(AI_MEMORY, data.ai_memory);
+      }
     } else {
       appendBubble('bot', AI_CONFIG.welcome_msg || WIDGET_CONFIG.welcomeMsg, getTime(), false);
     }
@@ -145,9 +149,13 @@
 
   // ── Poll for human replies every 8s ──────────────────────────
   let lastMsgCount = 0;
+  let chatPollInterval = null; // FIX: track interval so we can clear it
+
   function startChatListener() {
     lastMsgCount = chatHistory.length;
-    setInterval(async () => {
+    // FIX: clear any existing interval before starting new one (prevents duplicate loops)
+    if (chatPollInterval) clearInterval(chatPollInterval);
+    chatPollInterval = setInterval(async () => {
       const data = await fbGet('support_chats', SESSION_ID);
       if (!data) return;
       const msgs = data.messages || [];
@@ -160,6 +168,8 @@
         msgs.slice(lastMsgCount).forEach(m => {
           if (m.role === 'human_agent') {
             appendHumanAgentBubble(m.content, m.time, m.agent_name);
+            // Human replied — cancel email timer
+            clearTimeout(humanEmailTimer);
             if (!chatOpen) { const d = document.getElementById('aezoon-unread-dot'); if(d) d.style.display='flex'; }
           }
         });
@@ -211,34 +221,48 @@ FORMATTING RULES:
 - Keep answers short — max 4-5 lines
 - Never write long paragraphs
 
+ANSWER QUALITY RULES:
+- If KB card has the answer → use ONLY that info, be specific and accurate
+- If no KB card matches → give a helpful general answer, never make up specifics
+- If visitor asks for order status → ask for their order number first
+- If visitor is angry (mood: angry) → start with empathy: "I understand your frustration..."
+- Never say "I don't have access to your order" without offering an alternative
+- Always end with: "Kuch aur poochna hai?" or equivalent in visitor's language
+
 HUMAN ESCALATION RULE:
 - Complex issues (payment failed, order missing, refund dispute, urgent complaint) → add [[HUMAN_NEEDED]] at the very END
 - Only for genuine complex issues, not simple questions
 
 BEHAVIOR:
 - Be warm, helpful, concise
-- If unsure, say so honestly
+- If unsure, say so honestly and offer to connect with human
 - Never make up prices, policies, or product details`;
 
     const systemPrompt = (AI_CONFIG.system_prompt
       ? basePrompt + '\n\nSTORE SPECIFIC INFO:\n' + AI_CONFIG.system_prompt
       : basePrompt) + memCtx;
 
-    // ── RAG: Find relevant KB cards ───────────────────────────
+    // ── IMPROVED RAG: Find relevant KB cards ─────────────────
     let kbContext = '';
     const kbCards = AI_CONFIG.kb_cards || [];
     if (kbCards.length) {
       const relevant = findRelevantKBCards(userMsg, kbCards);
       if (relevant.length) {
-        kbContext = '\n\n--- RELEVANT KNOWLEDGE BASE ---\n';
-        relevant.forEach(c => { kbContext += `\n[${c.icon || '📄'} ${c.name}]\n${c.content}\n`; });
-        kbContext += '\n--- USE ABOVE INFO TO ANSWER ---';
+        kbContext = '\n\n--- KNOWLEDGE BASE (USE THIS TO ANSWER) ---\n';
+        relevant.forEach(c => {
+          kbContext += `\n[${c.icon || '📄'} ${c.name}]\n${c.content}\n`;
+        });
+        kbContext += '\n--- IMPORTANT: Answer based on above KB info only. Do not add info not in KB. ---';
+      } else {
+        // IMPROVEMENT: Agar koi KB card match nahi hua toh AI ko batao
+        kbContext = '\n\n--- NOTE: No specific KB card found for this question. Give a helpful general answer and offer human support if needed. ---';
       }
     }
 
     const finalPrompt = systemPrompt + kbContext;
 
-    const history = chatHistory.slice(-8);
+    // IMPROVEMENT: Last 10 messages history (pehle 8 tha)
+    const history = chatHistory.slice(-10);
 
     if (model.startsWith('gemini')) {
       const msgs = [
@@ -251,7 +275,8 @@ BEHAVIOR:
         body: JSON.stringify({
           contents: msgs,
           systemInstruction: { parts: [{ text: finalPrompt }] },
-          generationConfig: { temperature: 0.7, maxOutputTokens: 512 }
+          // IMPROVEMENT: temperature thoda kam — zyada accurate answers
+          generationConfig: { temperature: 0.5, maxOutputTokens: 600 }
         })
       });
       const data = await res.json();
@@ -266,7 +291,7 @@ BEHAVIOR:
       const res = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-        body: JSON.stringify({ model, messages: msgs, max_tokens: 512, temperature: 0.7 })
+        body: JSON.stringify({ model, messages: msgs, max_tokens: 600, temperature: 0.5 })
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
@@ -294,8 +319,12 @@ BEHAVIOR:
   let isHumanModeActive = false; // synced from Firestore listener — declared once here
 
   // ── Send Message ──────────────────────────────────────────────
+  let lastMsgTime = 0; // FIX: rate limiting — spam se bachao
   async function sendMessage() {
     if (isTyping) return;
+    // FIX: 2 second cooldown between messages
+    if (Date.now() - lastMsgTime < 2000) return;
+    lastMsgTime = Date.now();
     const input = document.getElementById('aezoon-input');
     const text = input.value.trim();
     if (!text) return;
@@ -315,36 +344,140 @@ BEHAVIOR:
     showTyping();
     isTyping = true;
 
+    // IMPROVEMENT: Complex question detect karo — deep thinking mode
+    const isComplexQuestion = userMsg.split(' ').length > 8 ||
+      /\b(explain|compare|difference|why|how does|what happens|detail|step by step|process|kaise|kyun|farq|samjhao|detail mein|tafseel)\b/i.test(userMsg);
+
     try {
+      // Deep thinking indicator for complex questions
+      if (isComplexQuestion) {
+        hideTyping();
+        showDeepThinking();
+      }
+
       const reply = await callAI(text);
+
       hideTyping();
+      hideDeepThinking();
       isTyping = false;
       chatHistory.push({ role: 'assistant', content: reply, time: getTime() });
-      appendBubble('bot', reply, getTime(), true);
+
+      // IMPROVEMENT: Typewriter effect for bot replies (no extra Firebase reads)
+      appendBubbleTypewriter('bot', reply, getTime());
 
       // Update AI memory
       updateMemory(text, reply);
       saveChat();
       saveChatWithMemory();
 
-      // Start human timeout (if no human reply in 30min, show email form)
-      resetHumanTimeout();
+      // Auto-detect if AI couldn't answer properly → trigger human offer
+      const uncertainPhrases = [
+        "i don't know", "i'm not sure", "i cannot", "i can't", "not sure",
+        "unable to", "don't have information", "no information",
+        "mujhe nahi pata", "mujhe maloom nahi", "pata nahi", "nahi pata",
+        "معلوم نہیں", "نہیں جانتا", "لا أعرف", "لا أعلم"
+      ];
+      const replyLower = reply.toLowerCase();
+      const aiUncertain = uncertainPhrases.some(p => replyLower.includes(p));
 
-      // Check if AI flagged complex issue
-      if (reply.includes('[[HUMAN_NEEDED]]')) {
+      // Check if AI flagged complex issue OR is uncertain
+      const needsHuman = reply.includes('[[HUMAN_NEEDED]]') || aiUncertain;
+
+      if (needsHuman) {
         const cleanReply = reply.replace('[[HUMAN_NEEDED]]', '').trim();
         const bubbles = document.querySelectorAll('#aezoon-messages .aezoon-bubble.bot');
         if (bubbles.length) {
           const last = bubbles[bubbles.length - 1];
           last.innerHTML = formatMessage(cleanReply) + `<div class="aezoon-bubble-time">${getTime()}</div>`;
         }
-        showHumanSupportOffer(cleanReply);
+        // Small delay so user reads AI reply first
+        setTimeout(() => showHumanSupportOffer(cleanReply), 800);
       }
     } catch (e) {
       hideTyping();
+      hideDeepThinking();
       isTyping = false;
       appendBubble('bot', '❌ Error: ' + e.message, getTime(), true);
     }
+  }
+
+  // ── Deep Thinking Indicator ───────────────────────────────────
+  function showDeepThinking() {
+    const msgs = document.getElementById('aezoon-messages');
+    if (!msgs || document.getElementById('aezoon-thinking-row')) return;
+    const el = document.createElement('div');
+    el.id = 'aezoon-thinking-row';
+    el.className = 'aezoon-msg-row bot';
+    el.innerHTML = `
+      <div class="aezoon-bot-avatar"><img src="${WIDGET_CONFIG.iconUrl}" alt="Support"></div>
+      <div class="aezoon-thinking-bubble">
+        <div class="aezoon-think-spinner"></div>
+        <span id="aezoon-think-text">Thinking deeply...</span>
+      </div>`;
+    msgs.appendChild(el);
+    scrollBottom();
+    // Cycle through thinking messages
+    const thinkMsgs = ['Thinking deeply...', 'Analyzing your question...', 'Finding the best answer...', 'Almost ready...'];
+    let i = 0;
+    el._thinkInterval = setInterval(() => {
+      i = (i + 1) % thinkMsgs.length;
+      const t = document.getElementById('aezoon-think-text');
+      if (t) t.textContent = thinkMsgs[i];
+    }, 1800);
+  }
+
+  function hideDeepThinking() {
+    const el = document.getElementById('aezoon-thinking-row');
+    if (el) { clearInterval(el._thinkInterval); el.remove(); }
+  }
+
+  // ── Typewriter Effect — no Firebase, pure DOM ─────────────────
+  function appendBubbleTypewriter(role, text, time) {
+    const msgs = document.getElementById('aezoon-messages');
+    if (!msgs) return;
+    const row = document.createElement('div');
+    row.className = 'aezoon-msg-row bot';
+    row.innerHTML = `
+      <div class="aezoon-bot-avatar"><img src="${WIDGET_CONFIG.iconUrl}" alt="Support"></div>
+      <div class="aezoon-bubble bot">
+        <span class="aezoon-typewriter-text"></span><span class="aezoon-cursor">▋</span>
+        <div class="aezoon-bubble-time" style="display:none;">${time} ✓</div>
+      </div>`;
+    msgs.appendChild(row);
+    scrollBottom();
+
+    const textEl = row.querySelector('.aezoon-typewriter-text');
+    const cursor = row.querySelector('.aezoon-cursor');
+    const timeEl = row.querySelector('.aezoon-bubble-time');
+
+    // Clean text for display (remove [[HUMAN_NEEDED]])
+    const cleanText = text.replace(/\[\[HUMAN_NEEDED\]\]/g, '').trim();
+    const formatted = formatMessage(cleanText);
+
+    // For short messages — instant render, no typewriter
+    if (cleanText.length < 80) {
+      textEl.innerHTML = formatted;
+      cursor.remove();
+      timeEl.style.display = 'flex';
+      scrollBottom();
+      return;
+    }
+
+    // Typewriter: render word by word (faster than char by char)
+    const words = cleanText.split(' ');
+    let i = 0;
+    const speed = Math.max(18, Math.min(45, 2000 / words.length)); // adaptive speed
+
+    const interval = setInterval(() => {
+      i++;
+      textEl.innerHTML = formatMessage(words.slice(0, i).join(' '));
+      scrollBottom();
+      if (i >= words.length) {
+        clearInterval(interval);
+        cursor.remove();
+        timeEl.style.display = 'flex';
+      }
+    }, speed);
   }
 
   // ── AI Memory Update ──────────────────────────────────────────
@@ -375,6 +508,21 @@ BEHAVIOR:
     topicKeywords.forEach(t => { if (userMsg.toLowerCase().includes(t) && !AI_MEMORY.topics.includes(t)) AI_MEMORY.topics.push(t); });
   }
 
+  // ── Collect visitor device/browser info ──────────────────────
+  function getVisitorInfo() {
+    const ua = navigator.userAgent;
+    const browser = ua.includes('Chrome') ? 'Chrome' : ua.includes('Firefox') ? 'Firefox' : ua.includes('Safari') ? 'Safari' : ua.includes('Edge') ? 'Edge' : 'Unknown';
+    const os = ua.includes('Windows') ? 'Windows' : ua.includes('Mac') ? 'macOS' : ua.includes('iPhone') ? 'iPhone' : ua.includes('Android') ? 'Android' : ua.includes('Linux') ? 'Linux' : 'Unknown';
+    const device = /Mobi|Android|iPhone|iPad/i.test(ua) ? 'Mobile' : 'Desktop';
+    const lang = navigator.language || 'Unknown';
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    // Derive country from timezone (basic)
+    const tzCountry = tz.split('/')[0] || '';
+    return { browser, os, device, lang, timezone: tz, country: tzCountry, screen: `${screen.width}x${screen.height}` };
+  }
+
+  const VISITOR_INFO = getVisitorInfo();
+
   async function saveChatWithMemory() {
     try {
       await fbSet('support_chats', SESSION_ID, {
@@ -384,21 +532,14 @@ BEHAVIOR:
         updated_at: Date.now(),
         messages: chatHistory.slice(-40),
         ai_memory: AI_MEMORY,
-        sentiment: AI_MEMORY.sentiment || ''
+        sentiment: AI_MEMORY.sentiment || '',
+        visitor_info: VISITOR_INFO  // device/browser info
       });
     } catch(e) {}
   }
 
-  // ── Human Timeout → Email Form ────────────────────────────────
-  function resetHumanTimeout() {
-    clearTimeout(humanTimeoutTimer);
-    humanTimeoutTimer = setTimeout(() => {
-      // Check if human mode is active but no reply came
-      if (isHumanModeActive) {
-        showEmailCollectionForm();
-      }
-    }, HUMAN_TIMEOUT_MS);
-  }
+  // ── Human Timeout → replaced by 1-min timer in _aezoonRequestHuman ──
+  function resetHumanTimeout() { /* no-op — handled by humanEmailTimer */ }
 
   function showEmailCollectionForm() {
     const msgs = document.getElementById('aezoon-messages');
@@ -503,6 +644,8 @@ BEHAVIOR:
   }
 
   // ── Request Human Support ─────────────────────────────────────
+  let humanEmailTimer = null; // 1 min timer after human connect
+
   window._aezoonRequestHuman = async function () {
     const card = document.getElementById('aezoon-human-card');
     if (card) card.innerHTML = `<div style="text-align:center;padding:0.5rem;color:#0ea5e9;font-size:0.85rem;">⏳ Connecting you to our support team...</div>`;
@@ -522,6 +665,28 @@ BEHAVIOR:
         if (card) card.remove();
         appendBubble('bot', "✅ Done! A human agent has been notified. Please wait — we'll reply here shortly.", getTime(), true);
       }, 1500);
+
+      // ── 1 minute timer — if no human reply, show email form ──
+      clearTimeout(humanEmailTimer);
+      humanEmailTimer = setTimeout(() => {
+        // Check if human already replied
+        const hasHumanReply = chatHistory.some(m => m.role === 'human_agent');
+        if (!hasHumanReply && !document.getElementById('aezoon-email-form')) {
+          // Show in user's language
+          const lang = AI_MEMORY.language || 'English';
+          let msg = '';
+          if (lang === 'Urdu' || lang === 'Roman Urdu') {
+            msg = 'Hamara agent abhi busy hai. Apna email dein — hum 24 ghante mein jawab denge.';
+          } else if (lang === 'Arabic') {
+            msg = 'وكيلنا مشغول الآن. أدخل بريدك الإلكتروني وسنرد خلال 24 ساعة.';
+          } else {
+            msg = 'Our agent is currently busy. Leave your email and we\'ll get back to you within 24 hours.';
+          }
+          appendBubble('bot', msg, getTime(), true);
+          setTimeout(() => showEmailCollectionForm(), 600);
+        }
+      }, 60 * 1000); // 1 minute
+
     } catch (e) {
       appendBubble('bot', '❌ Could not connect. Please try again.', getTime(), true);
     }
@@ -647,11 +812,15 @@ BEHAVIOR:
       if (btnImg) btnImg.style.display = 'none';
       if (btnClose) btnClose.style.display = 'flex';
       document.getElementById('aezoon-unread-dot').style.display = 'none';
+      // FIX: restart polling when chat opens (in case it was stopped)
+      if (!chatPollInterval) startChatListener();
       setTimeout(() => document.getElementById('aezoon-input')?.focus(), 300);
     } else {
       box.classList.remove('open');
       if (btnImg) btnImg.style.display = 'block';
       if (btnClose) btnClose.style.display = 'none';
+      // FIX: stop polling when chat is closed — saves Firestore reads + memory
+      if (chatPollInterval) { clearInterval(chatPollInterval); chatPollInterval = null; }
     }
   }
 
@@ -739,6 +908,12 @@ ol.aezoon-list{list-style:decimal;padding-left:20px}
 .aezoon-email-cancel{background:#f1f5f9;color:#64748b;border:none;border-radius:20px;padding:8px 12px;font-size:12px;cursor:pointer;font-family:inherit}
 .aezoon-email-status{font-size:11px;color:#ef4444;margin-top:6px;min-height:16px}
 @media(max-width:480px){#aezoon-chat-box{width:calc(100vw - 16px);height:72vh;right:8px;bottom:84px;border-radius:16px}#aezoon-widget-btn{bottom:16px;right:16px}}
+.aezoon-thinking-bubble{display:flex;align-items:center;gap:8px;padding:9px 14px;background:linear-gradient(135deg,rgba(99,102,241,.1),rgba(139,92,246,.07));border:1px solid rgba(99,102,241,.25);border-radius:14px;border-bottom-left-radius:3px;font-size:12.5px;color:#6366f1;font-weight:500;animation:aezoonBubbleBot .25s ease both}
+.aezoon-think-spinner{width:13px;height:13px;border:2px solid rgba(99,102,241,.2);border-top-color:#6366f1;border-radius:50%;animation:aezoonThinkSpin .8s linear infinite;flex-shrink:0}
+@keyframes aezoonThinkSpin{to{transform:rotate(360deg)}}
+.aezoon-typewriter-text{display:inline;}
+.aezoon-cursor{display:inline-block;width:2px;height:0.85em;background:#0ea5e9;margin-left:1px;vertical-align:text-bottom;animation:aezoonBlink .65s step-end infinite;}
+@keyframes aezoonBlink{0%,100%{opacity:1}50%{opacity:0}}
       `;
       document.head.appendChild(style);
     }

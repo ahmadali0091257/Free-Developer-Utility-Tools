@@ -358,16 +358,299 @@ function renderKBTemplates() {
 // ── Tab switch ────────────────────────────────────────────────
 function switchToKBTab() {
   csSupportTabSwitch('kb');
-  // Show loading state
   const grid = document.getElementById('kbCardsGrid');
   if (grid && KB_CARDS.length === 0) {
     grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--muted);">
       <div style="font-size:1.5rem;margin-bottom:0.5rem;">⏳</div>Loading cards...
     </div>`;
   }
-  // Always fetch fresh from Firestore when tab opens
   fetchKBCards().then(() => {
     renderKBStats();
     renderKBTemplates();
+  });
+}
+
+function kbSubTab(tab) {
+  const cards = document.getElementById('kbSubCards');
+  const ai = document.getElementById('kbSubAI');
+  const btnCards = document.getElementById('kbSubTabCards');
+  const btnAI = document.getElementById('kbSubTabAI');
+  if (tab === 'cards') {
+    if (cards) cards.style.display = 'flex';
+    if (ai) ai.style.display = 'none';
+    if (btnCards) btnCards.classList.add('active');
+    if (btnAI) btnAI.classList.remove('active');
+  } else {
+    if (cards) cards.style.display = 'none';
+    if (ai) { ai.style.display = 'flex'; }
+    if (btnCards) btnCards.classList.remove('active');
+    if (btnAI) btnAI.classList.add('active');
+    renderKBAIChat();
+    if (typeof lucide !== 'undefined') setTimeout(() => lucide.createIcons(), 50);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// ── AI KB MANAGER — Analyze, Create, Edit Cards Automatically ─
+// ══════════════════════════════════════════════════════════════
+
+let KB_AI_HISTORY = [];
+let KB_AI_TYPING = false;
+
+// ── Main AI call for KB management ───────────────────────────
+async function callKBAI(userMsg) {
+  const key = CS_SUPPORT_CONFIG.api_key || '';
+  const model = CS_SUPPORT_CONFIG.model || 'gemini-1.5-flash';
+  if (!key) throw new Error('API key nahi hai — Settings mein add karo');
+
+  // Build current KB context
+  const kbContext = KB_CARDS.length
+    ? KB_CARDS.map(c => `[${c.icon || '📄'} ${c.name}]\nKeywords: ${c.keywords || ''}\nContent: ${(c.content || '').substring(0, 300)}`).join('\n\n')
+    : '(No cards yet)';
+
+  const systemPrompt = `You are an expert Knowledge Base Manager for an e-commerce customer support system.
+
+CURRENT KNOWLEDGE BASE CARDS:
+${kbContext}
+
+YOUR CAPABILITIES:
+1. ANALYZE existing cards — find gaps, missing info, weak keywords
+2. CREATE new cards — when business info is provided that has no card
+3. EDIT existing cards — improve content, add missing info, fix keywords
+4. ASK smart questions — if info is incomplete, ask ONE specific question
+
+CARD FORMAT (when creating/editing, always use this JSON format):
+\`\`\`kb_action
+{
+  "action": "create" | "edit" | "delete",
+  "card_id": "existing_id_if_editing",
+  "name": "Card Name",
+  "icon": "emoji",
+  "keywords": "keyword1, keyword2, roman urdu keywords, english keywords",
+  "content": "Full card content here"
+}
+\`\`\`
+
+RULES:
+- Always check if a similar card already exists before creating new one
+- If card exists but is incomplete → suggest EDIT with improved version
+- Keywords must include BOTH English AND Roman Urdu variations
+- Content must be specific, not generic — use real info provided
+- Ask ONE question at a time if info is missing
+- After any action, ask: "Kuch aur improve karna hai?"
+
+CONVERSATION STYLE:
+- Reply in same language as user (Roman Urdu / English)
+- Be direct and efficient
+- Show what you found/changed clearly`;
+
+  const history = KB_AI_HISTORY.slice(-12);
+
+  if (model.startsWith('gemini')) {
+    const msgs = [
+      ...history.map(m => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.content }] })),
+      { role: 'user', parts: [{ text: userMsg }] }
+    ];
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: msgs,
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: { temperature: 0.4, maxOutputTokens: 1500 }
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    return data.candidates[0].content.parts[0].text;
+  } else {
+    const msgs = [
+      { role: 'system', content: systemPrompt },
+      ...history.map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content })),
+      { role: 'user', content: userMsg }
+    ];
+    const res = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      body: JSON.stringify({ model, messages: msgs, max_tokens: 1500, temperature: 0.4 })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    return data.choices[0].message.content;
+  }
+}
+
+// ── Send message to KB AI ─────────────────────────────────────
+async function sendKBAIMsg() {
+  const input = document.getElementById('kbAiInput');
+  const text = input?.value.trim();
+  if (!text || KB_AI_TYPING) return;
+  input.value = '';
+  input.style.height = 'auto';
+  await sendKBAIMsgInternal(text);
+}
+
+async function sendKBAIMsgInternal(text) {
+  if (KB_AI_TYPING) return;
+  KB_AI_TYPING = true;
+
+  const time = getCSTime();
+  KB_AI_HISTORY.push({ role: 'user', content: text, time });
+  renderKBAIChat();
+  showKBAITyping();
+
+  try {
+    const reply = await callKBAI(text);
+    hideKBAITyping();
+    KB_AI_TYPING = false;
+    KB_AI_HISTORY.push({ role: 'assistant', content: reply, time: getCSTime() });
+    renderKBAIChat();
+
+    // Parse and execute any kb_action blocks
+    const actionMatches = [...reply.matchAll(/```kb_action\n([\s\S]*?)```/g)];
+    for (const match of actionMatches) {
+      try {
+        const action = JSON.parse(match[1].trim());
+        await executeKBAction(action);
+      } catch (e) { console.log('KB action parse error:', e); }
+    }
+  } catch (e) {
+    hideKBAITyping();
+    KB_AI_TYPING = false;
+    KB_AI_HISTORY.push({ role: 'assistant', content: '❌ Error: ' + e.message, time: getCSTime() });
+    renderKBAIChat();
+  }
+}
+
+// ── Execute KB action from AI ─────────────────────────────────
+async function executeKBAction(action) {
+  if (!action || !action.action) return;
+
+  const data = {
+    name: action.name || 'Untitled',
+    icon: action.icon || '📄',
+    keywords: action.keywords || '',
+    content: action.content || '',
+    updated_at: Date.now()
+  };
+
+  try {
+    if (action.action === 'create') {
+      const docId = 'kb_' + Date.now();
+      data.created_at = Date.now();
+      await db.collection('support_kb').doc(docId).set(data);
+      await fetchKBCards();
+      await syncKBToConfig();
+      toast(`✅ Card created: ${data.name}`, 'success');
+    } else if (action.action === 'edit' && action.card_id) {
+      await db.collection('support_kb').doc(action.card_id).update(data);
+      await fetchKBCards();
+      await syncKBToConfig();
+      toast(`✅ Card updated: ${data.name}`, 'success');
+    } else if (action.action === 'delete' && action.card_id) {
+      await db.collection('support_kb').doc(action.card_id).delete();
+      await fetchKBCards();
+      await syncKBToConfig();
+      toast(`🗑 Card deleted: ${data.name}`, 'success');
+    }
+    // Re-render KB stats
+    renderKBStats();
+  } catch (e) { toast('KB action error: ' + e.message, 'error'); }
+}
+
+// ── Render KB AI Chat ─────────────────────────────────────────
+function renderKBAIChat() {
+  const container = document.getElementById('kbAiMessages');
+  if (!container) return;
+
+  if (!KB_AI_HISTORY.length) {
+    container.innerHTML = `
+      <div style="text-align:center;padding:2rem;color:var(--muted);">
+        <div style="font-size:2.5rem;margin-bottom:0.8rem;">🧠</div>
+        <div style="font-weight:600;color:var(--text);margin-bottom:0.5rem;">KB AI Manager</div>
+        <div style="font-size:0.8rem;line-height:1.7;">
+          Main tumhari Knowledge Base ko analyze aur improve karta hoon.<br><br>
+          <strong style="color:var(--text);">Kya kar sakta hoon:</strong><br>
+          • <b>Cards analyze karo</b> — gaps aur missing info dhundho<br>
+          • <b>New cards banao</b> — business info se automatically<br>
+          • <b>Existing cards improve karo</b> — better content aur keywords<br>
+          • <b>Business analyze karo</b> — batao kya sell karte ho<br><br>
+          <em>Shuru karo: "Mere cards analyze karo" ya "Mera store X hai..."</em>
+        </div>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = KB_AI_HISTORY.map(m => {
+    const isUser = m.role === 'user';
+    let formatted = (m.content || '')
+      // Render kb_action blocks as preview cards
+      .replace(/```kb_action\n([\s\S]*?)```/g, (_, json) => {
+        try {
+          const a = JSON.parse(json.trim());
+          const actionLabel = a.action === 'create' ? '✅ Creating Card' : a.action === 'edit' ? '✏️ Editing Card' : '🗑 Deleting Card';
+          return `<div class="kb-ai-action-card">
+            <div class="kb-ai-action-header">${actionLabel}: ${escHtml(a.name || '')}</div>
+            ${a.keywords ? `<div class="kb-ai-action-kw">🏷️ ${escHtml(a.keywords.substring(0, 80))}...</div>` : ''}
+            ${a.content ? `<div class="kb-ai-action-preview">${escHtml(a.content.substring(0, 120))}...</div>` : ''}
+          </div>`;
+        } catch { return ''; }
+      })
+      .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+      .replace(/\n/g, '<br>');
+
+    return `<div class="cs-msg-row ${isUser ? 'user' : 'bot'}">
+      <div class="cs-bubble ${isUser ? 'user' : 'bot'}">${formatted}<div class="cs-bubble-time">${m.time || ''}</div></div>
+    </div>`;
+  }).join('');
+
+  container.scrollTop = container.scrollHeight;
+}
+
+function showKBAITyping() {
+  const c = document.getElementById('kbAiMessages');
+  if (!c) return;
+  const el = document.createElement('div');
+  el.id = 'kbAiTyping';
+  el.className = 'cs-msg-row bot';
+  el.innerHTML = `<div class="cs-typing-bubble"><span></span><span></span><span></span></div>`;
+  c.appendChild(el);
+  c.scrollTop = c.scrollHeight;
+}
+function hideKBAITyping() { document.getElementById('kbAiTyping')?.remove(); }
+
+// ── Quick Actions for KB AI ───────────────────────────────────
+async function kbAiQuickAction(action) {
+  const messages = {
+    analyze: 'Mere saare KB cards analyze karo. Kya missing hai? Kaunse cards weak hain? Kya improve karna chahiye?',
+    gaps: 'Meri business ke liye kaunse important topics ke cards missing hain? Common customer questions ke liye cards check karo.',
+    improve_all: 'Saare cards ke keywords improve karo — Roman Urdu aur English dono add karo jahan missing hain.',
+    business_analyze: 'Meri business analyze karo. Jo cards hain unse pata lagao main kya sell karta hoon aur kya missing info hai jo customers pooch sakte hain.'
+  };
+  const msg = messages[action];
+  if (!msg) return;
+  await sendKBAIMsgInternal(msg);
+}
+
+// ── Handle file upload for KB AI ──────────────────────────────
+function handleKBAIFileUpload(input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  let processed = 0;
+  const contents = [];
+
+  files.forEach(file => {
+    if (file.size > 300000) { toast(`${file.name} too large`, 'warning'); processed++; return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      contents.push({ name: file.name, text: e.target.result.substring(0, 5000) });
+      processed++;
+      if (processed === files.length) {
+        input.value = '';
+        const combined = contents.map(f => `[File: ${f.name}]\n${f.text}`).join('\n\n---\n\n');
+        const msg = `[FILES] Yeh files analyze karo aur inse KB cards banao ya existing cards improve karo:\n\n${combined}`;
+        sendKBAIMsgInternal(msg);
+      }
+    };
+    reader.onerror = () => { processed++; };
+    reader.readAsText(file);
   });
 }

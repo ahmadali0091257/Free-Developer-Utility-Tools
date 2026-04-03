@@ -35,13 +35,26 @@ function toggleSupportSound() {
 // ══════════════════════════════════════════════════════════════
 // ── 2. PIN CHATS ──────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════
-let CS_PINNED = JSON.parse(localStorage.getItem('cs_pinned') || '[]');
+// FIX: localStorage ki jagah Firestore use karo — sab devices pe sync hoga
+let CS_PINNED = [];
 
-function togglePinChat(sessionId) {
+// App start pe pinned chats load karo
+async function loadPinnedChats() {
+  try {
+    const snap = await db.collection('support_settings').doc('pinned_chats').get();
+    if (snap.exists) CS_PINNED = snap.data().sessions || [];
+  } catch(e) { CS_PINNED = []; }
+}
+loadPinnedChats();
+
+async function togglePinChat(sessionId) {
   const idx = CS_PINNED.indexOf(sessionId);
   if (idx > -1) { CS_PINNED.splice(idx, 1); toast('Unpinned', 'success'); }
   else { CS_PINNED.unshift(sessionId); toast('📌 Pinned!', 'success'); }
-  localStorage.setItem('cs_pinned', JSON.stringify(CS_PINNED));
+  // FIX: Firestore mein save karo
+  try {
+    await db.collection('support_settings').doc('pinned_chats').set({ sessions: CS_PINNED });
+  } catch(e) { console.log('Pin save error:', e); }
   renderSupportChatList();
 }
 
@@ -168,7 +181,119 @@ function renderVisitorInfo(chat) {
         ${memory.sentiment ? `<div class="cs-vrow"><span>😊</span><span>Mood: ${memory.sentiment}</span></div>` : ''}
       </div>
       ${memory.notes ? `<div class="cs-visitor-notes">📝 ${memory.notes}</div>` : ''}
+      <button class="btn btn-outline btn-sm" style="margin-top:0.6rem;width:100%;font-size:0.7rem;" onclick="openVisitorPopup('${chat.session_id}')">
+        🔍 Full Profile
+      </button>
     </div>`;
+}
+
+// ── Visitor Full Profile Popup ────────────────────────────────
+function openVisitorPopup(sessionId) {
+  const chat = CS_CHATS.find(c => c.session_id === sessionId);
+  if (!chat) return;
+
+  const memory = chat.ai_memory || {};
+  const info = chat.visitor_info || {};
+  const msgs = chat.messages || [];
+  const userMsgs = msgs.filter(m => m.role === 'user');
+  const botMsgs = msgs.filter(m => m.role === 'assistant');
+  const humanMsgs = msgs.filter(m => m.role === 'human_agent');
+  const firstMsg = msgs[0];
+  const lastMsg = msgs[msgs.length - 1];
+
+  // Session duration
+  const duration = firstMsg && lastMsg
+    ? Math.round((Date.now() - (chat.created_at || Date.now())) / 60000)
+    : 0;
+
+  // Topics as chips
+  const topics = memory.topics || [];
+
+  const sentimentColor = { angry: '#ef4444', happy: '#10b981', confused: '#f59e0b' };
+  const sentimentEmoji = { angry: '😠', happy: '😊', confused: '😕', neutral: '😐' };
+
+  const popup = document.getElementById('csVisitorPopup');
+  const content = document.getElementById('csVisitorPopupContent');
+  if (!popup || !content) return;
+
+  content.innerHTML = `
+    <div class="cvp-hero">
+      <div class="cvp-avatar">${memory.name ? memory.name[0].toUpperCase() : '?'}</div>
+      <div class="cvp-hero-info">
+        <div class="cvp-name">${escHtml(memory.name || 'Unknown Visitor')}</div>
+        <div class="cvp-session">${(sessionId || '').replace('aezoon_sess_', '#').substring(0, 16)}</div>
+        ${memory.sentiment ? `<div class="cvp-mood" style="color:${sentimentColor[memory.sentiment] || 'var(--muted)'}">
+          ${sentimentEmoji[memory.sentiment] || '😐'} ${memory.sentiment}
+        </div>` : ''}
+      </div>
+    </div>
+
+    <div class="cvp-grid">
+      <div class="cvp-section">
+        <div class="cvp-section-title">📍 Location & Device</div>
+        <div class="cvp-rows">
+          ${info.country ? `<div class="cvp-row"><span class="cvp-label">Country</span><span class="cvp-val">🌍 ${escHtml(info.country)}</span></div>` : ''}
+          ${info.city ? `<div class="cvp-row"><span class="cvp-label">City</span><span class="cvp-val">🏙️ ${escHtml(info.city)}</span></div>` : ''}
+          ${info.browser ? `<div class="cvp-row"><span class="cvp-label">Browser</span><span class="cvp-val">🖥️ ${escHtml(info.browser)}</span></div>` : ''}
+          ${info.os ? `<div class="cvp-row"><span class="cvp-label">OS</span><span class="cvp-val">📱 ${escHtml(info.os)}</span></div>` : ''}
+          ${info.device ? `<div class="cvp-row"><span class="cvp-label">Device</span><span class="cvp-val">${escHtml(info.device)}</span></div>` : ''}
+          ${!info.country && !info.city ? `<div class="cvp-row"><span class="cvp-val" style="color:var(--muted);font-style:italic;">Location not available</span></div>` : ''}
+        </div>
+      </div>
+
+      <div class="cvp-section">
+        <div class="cvp-section-title">💬 Session Stats</div>
+        <div class="cvp-rows">
+          <div class="cvp-row"><span class="cvp-label">Messages</span><span class="cvp-val">${userMsgs.length} sent</span></div>
+          <div class="cvp-row"><span class="cvp-label">AI Replies</span><span class="cvp-val">${botMsgs.length}</span></div>
+          ${humanMsgs.length ? `<div class="cvp-row"><span class="cvp-label">Human Replies</span><span class="cvp-val">👨‍💼 ${humanMsgs.length}</span></div>` : ''}
+          <div class="cvp-row"><span class="cvp-label">Language</span><span class="cvp-val">🌐 ${escHtml(memory.language || 'Unknown')}</span></div>
+          ${firstMsg ? `<div class="cvp-row"><span class="cvp-label">Started</span><span class="cvp-val">🕐 ${firstMsg.time || '—'}</span></div>` : ''}
+          ${chat.tag ? `<div class="cvp-row"><span class="cvp-label">Tag</span><span class="cvp-val cs-tag-badge cs-tag-${chat.tag}">${chat.tag}</span></div>` : ''}
+        </div>
+      </div>
+
+      ${memory.email ? `
+      <div class="cvp-section">
+        <div class="cvp-section-title">📧 Contact</div>
+        <div class="cvp-rows">
+          <div class="cvp-row"><span class="cvp-label">Email</span><span class="cvp-val">${escHtml(memory.email)}</span></div>
+        </div>
+      </div>` : ''}
+
+      ${topics.length ? `
+      <div class="cvp-section">
+        <div class="cvp-section-title">🏷️ Topics Discussed</div>
+        <div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.4rem;">
+          ${topics.map(t => `<span class="kb-kw-chip">${escHtml(t)}</span>`).join('')}
+        </div>
+      </div>` : ''}
+
+      ${chat.page ? `
+      <div class="cvp-section" style="grid-column:1/-1;">
+        <div class="cvp-section-title">📄 Page Visited</div>
+        <div style="font-size:0.75rem;color:var(--muted);word-break:break-all;margin-top:0.3rem;">${escHtml(chat.page)}</div>
+      </div>` : ''}
+    </div>
+
+    <div class="cvp-actions">
+      <button class="btn btn-outline btn-sm" onclick="selectSupportChat('${sessionId}');closeVisitorPopup()">
+        💬 Open Chat
+      </button>
+      ${memory.email ? `<button class="btn btn-outline btn-sm" onclick="navigator.clipboard.writeText('${memory.email}');toast('Email copied!','success')">
+        📋 Copy Email
+      </button>` : ''}
+      <button class="btn btn-danger btn-sm" onclick="if(confirm('Delete this chat?')){CS_SELECTED_SESSION='${sessionId}';deleteSupportChat();closeVisitorPopup()}">
+        🗑 Delete
+      </button>
+    </div>`;
+
+  popup.classList.add('open');
+}
+
+function closeVisitorPopup() {
+  document.getElementById('csVisitorPopup')?.classList.remove('open');
+}
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -311,13 +436,25 @@ async function translateReply() {
 // ══════════════════════════════════════════════════════════════
 // ── 8. CANNED RESPONSES ───────────────────────────────────────
 // ══════════════════════════════════════════════════════════════
-let CS_CANNED = JSON.parse(localStorage.getItem('cs_canned') || 'null') || [
+// FIX: Canned responses ab Firestore mein save hongi — localStorage nahi
+// Isse sab devices/browsers pe same responses milenge
+let CS_CANNED = [
   { id: 1, title: 'Greeting', text: 'Hello! Thank you for contacting us. How can I help you today?' },
   { id: 2, title: 'Shipping Time', text: 'Your order will be delivered within 3-5 business days.' },
   { id: 3, title: 'Return Policy', text: 'We accept returns within 7 days of delivery. Item must be unused and in original packaging.' },
   { id: 4, title: 'Order Tracking', text: 'Please share your order number and I will check the status for you.' },
   { id: 5, title: 'Closing', text: 'Is there anything else I can help you with? Have a great day! 😊' }
 ];
+
+// Firestore se canned responses load karo
+async function loadCannedResponses() {
+  try {
+    const snap = await db.collection('support_settings').doc('canned_responses').get();
+    if (snap.exists && snap.data().items && snap.data().items.length) {
+      CS_CANNED = snap.data().items;
+    }
+  } catch(e) { console.log('Canned load error:', e); }
+}
 
 function renderCannedResponses() {
   const el = document.getElementById('csCannedList');
@@ -346,19 +483,24 @@ function toggleCannedPanel() {
   const panel = document.getElementById('csCannedPanel');
   if (!panel) return;
   panel.classList.toggle('open');
-  if (panel.classList.contains('open')) renderCannedResponses();
+  if (panel.classList.contains('open')) {
+    loadCannedResponses().then(renderCannedResponses);
+  }
 }
 
-function saveCannedResponse() {
+async function saveCannedResponse() {
   const title = document.getElementById('csNewCannedTitle')?.value.trim();
   const text = document.getElementById('csNewCannedText')?.value.trim();
-  if (!title || !text) return toast('Title and text required', 'error');
+  if (!title || !text) return toast('Title aur text dono chahiye', 'error');
   CS_CANNED.push({ id: Date.now(), title, text });
-  localStorage.setItem('cs_canned', JSON.stringify(CS_CANNED));
-  document.getElementById('csNewCannedTitle').value = '';
-  document.getElementById('csNewCannedText').value = '';
-  renderCannedResponses();
-  toast('Saved!', 'success');
+  // FIX: Firestore mein save karo — localStorage nahi
+  try {
+    await db.collection('support_settings').doc('canned_responses').set({ items: CS_CANNED });
+    document.getElementById('csNewCannedTitle').value = '';
+    document.getElementById('csNewCannedText').value = '';
+    renderCannedResponses();
+    toast('Saved to cloud! ☁️', 'success');
+  } catch(e) { toast('Save error: ' + e.message, 'error'); }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -486,6 +628,30 @@ function viewEmailReqChat(sessionId) {
     csSupportTabSwitch('chats');
     selectSupportChat(sessionId);
   }, 300);
+}
+
+// ── IMPROVEMENT: CSV Export — email requests ko download karo ──
+function exportEmailRequestsCSV() {
+  if (!CS_EMAIL_REQUESTS.length) return toast('Koi email request nahi hai', 'warning');
+  const headers = ['Email', 'Issue', 'Status', 'Language', 'Visitor Name', 'Page', 'Date'];
+  const rows = CS_EMAIL_REQUESTS.map(r => [
+    r.email || '',
+    (r.issue || '').replace(/,/g, ';'),
+    r.status || 'pending',
+    r.language || '',
+    r.visitor_name || '',
+    (r.page || '').replace(/,/g, ';'),
+    r.created_at ? new Date(r.created_at).toLocaleString() : ''
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `email-requests-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('CSV downloaded! 📥', 'success');
 }
 
 // ══════════════════════════════════════════════════════════════
