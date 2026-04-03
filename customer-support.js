@@ -81,46 +81,29 @@ async function loadSupportConfig() {
   } catch (e) { console.log('Support config load error:', e); }
 }
 
-// ── Render Chat List ──────────────────────────────────────────
-function renderSupportChatList() {
+// ── Render Chat List — support-advanced.js has the full version with pinning/sentiment
+// This is only used as initial fallback before support-advanced.js loads
+var renderSupportChatList = function() {
   const el = document.getElementById('csSidebarList');
   if (!el) return;
-  const search = (document.getElementById('csSearchInp')?.value || '').toLowerCase();
-  let chats = CS_CHATS.filter(c => {
-    const msgs = c.messages || [];
-    const lastMsg = msgs[msgs.length - 1]?.content || '';
-    return !search || (c.session_id || '').toLowerCase().includes(search) ||
-      lastMsg.toLowerCase().includes(search) || (c.page || '').toLowerCase().includes(search);
-  });
-  if (!chats.length) {
-    el.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--muted);font-size:0.85rem;">No chats yet.<br>Widget install karo store pe.</div>`;
+  if (!CS_CHATS.length) {
+    el.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--muted);font-size:0.85rem;">No chats yet.</div>`;
     return;
   }
-  el.innerHTML = chats.map(c => {
+  el.innerHTML = CS_CHATS.map(c => {
     const msgs = c.messages || [];
     const last = msgs[msgs.length - 1];
-    const preview = last ? last.content.substring(0, 45) + (last.content.length > 45 ? '...' : '') : 'No messages';
+    const preview = last ? last.content.replace(/\[\[HUMAN_NEEDED\]\]/g,'').substring(0, 45) : 'No messages';
     const isActive = CS_SELECTED_SESSION === c.session_id;
     const unread = c.unread || 0;
     const shortId = (c.session_id || '').replace('aezoon_sess_', '#').substring(0, 12);
-    const tag = c.tag || '';
-    const humanReq = c.human_requested || false;
-    const tagBadge = tag ? `<span class="cs-tag-badge cs-tag-${tag}">${tag}</span>` : '';
-    const humanBadge = humanReq ? `<span class="cs-tag-badge cs-tag-human">👨‍💼 Human</span>` : '';
-    return `
-      <div class="cs-chat-item ${isActive ? 'active' : ''}" onclick="selectSupportChat('${c.session_id}')">
-        <div class="cs-chat-avatar">${humanReq ? '🆘' : '💬'}</div>
-        <div class="cs-chat-info">
-          <div class="cs-chat-name">${shortId} ${tagBadge}${humanBadge}</div>
-          <div class="cs-chat-preview">${escHtml(preview)}</div>
-        </div>
-        <div class="cs-chat-meta">
-          <div class="cs-chat-time">${last?.time || ''}</div>
-          ${unread > 0 ? `<div class="cs-unread-badge">${unread === 999 ? '!' : unread}</div>` : ''}
-        </div>
-      </div>`;
+    return `<div class="cs-chat-item ${isActive?'active':''}" onclick="selectSupportChat('${c.session_id}')">
+      <div class="cs-chat-avatar">${c.human_requested?'🆘':'💬'}</div>
+      <div class="cs-chat-info"><div class="cs-chat-name">${shortId}</div><div class="cs-chat-preview">${escHtml(preview)}</div></div>
+      <div class="cs-chat-meta"><div class="cs-chat-time">${last?.time||''}</div>${unread>0?`<div class="cs-unread-badge">${unread===999?'!':unread}</div>`:''}</div>
+    </div>`;
   }).join('');
-}
+};
 
 function updateSupportStats() {
   const total = CS_CHATS.length;
@@ -146,6 +129,8 @@ function selectSupportChat(sessionId) {
   renderSupportChatDetail(chat);
   document.getElementById('csEmptyState').style.display = 'none';
   document.getElementById('csChatMain').style.display = 'flex';
+  // Render visitor info if available
+  if (typeof renderVisitorInfo === 'function') renderVisitorInfo(chat);
 }
 
 function renderSupportChatDetail(chat) {
@@ -1138,18 +1123,7 @@ async function callPromptUpgradeAI(userMsg) {
   return result;
 }
 
-// Also add KB stubs for index.html
-function switchToKBTab() { /* overridden by knowledge-base.js */ }
-function openKBModal(id) { /* overridden by knowledge-base.js */ }
-function closeKBModal() { /* overridden by knowledge-base.js */ }
-function saveKBCard() { /* overridden by knowledge-base.js */ }
-function deleteKBCard(id) { /* overridden by knowledge-base.js */ }
-function renderKBCards() { /* overridden by knowledge-base.js */ }
-function renderKBStats() { /* overridden by knowledge-base.js */ }
-function renderKBTemplates() { /* overridden by knowledge-base.js */ }
-function kbAiGenerateKeywords() { /* overridden by knowledge-base.js */ }
-function kbAiImproveContent() { /* overridden by knowledge-base.js */ }
-function loadKBTemplate(i) { /* overridden by knowledge-base.js */ }
+// KB functions are in knowledge-base.js — no stubs needed here
 
 // ══════════════════════════════════════════════════════════════
 // ── HUMAN REPLY SYSTEM ────────────────────────────────────────

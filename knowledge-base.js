@@ -19,10 +19,9 @@ async function fetchKBCards() {
   try {
     const snap = await db.collection('support_kb').orderBy('created_at', 'asc').get();
     KB_CARDS = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    if (document.getElementById('csTab_kb')?.style.display !== 'none') {
-      renderKBCards();
-      renderKBStats();
-    }
+    // Always render — tab visibility check removed
+    renderKBCards();
+    renderKBStats();
   } catch (e) { console.log('KB fetch error:', e); }
 }
 
@@ -58,7 +57,12 @@ function renderKBCards() {
 
   if (!filtered.length) {
     grid.innerHTML = '';
-    if (empty) empty.style.display = 'flex';
+    if (empty) {
+      empty.style.display = 'flex';
+      // Show different message if search active
+      const emptyTitle = empty.querySelector('.kb-empty-title');
+      if (emptyTitle) emptyTitle.textContent = search ? 'No cards match your search' : 'No knowledge cards yet';
+    }
     return;
   }
   if (empty) empty.style.display = 'none';
@@ -354,7 +358,16 @@ function renderKBTemplates() {
 // ── Tab switch ────────────────────────────────────────────────
 function switchToKBTab() {
   csSupportTabSwitch('kb');
-  renderKBCards();
-  renderKBStats();
-  renderKBTemplates();
+  // Show loading state
+  const grid = document.getElementById('kbCardsGrid');
+  if (grid && KB_CARDS.length === 0) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--muted);">
+      <div style="font-size:1.5rem;margin-bottom:0.5rem;">⏳</div>Loading cards...
+    </div>`;
+  }
+  // Always fetch fresh from Firestore when tab opens
+  fetchKBCards().then(() => {
+    renderKBStats();
+    renderKBTemplates();
+  });
 }

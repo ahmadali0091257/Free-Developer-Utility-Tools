@@ -492,13 +492,5 @@ function viewEmailReqChat(sessionId) {
 // ── 11. HOOK INTO EXISTING FUNCTIONS ─────────────────────────
 // ══════════════════════════════════════════════════════════════
 
-// Play sound when new chat arrives — called from startAlertsSync
+// Play sound when new chat arrives — called from showDashboardAlert in customer-support.js
 function playSoundOnNewAlert() { playSupportSound(); }
-
-// Render visitor info when chat is selected
-const _origSelectSupportChat = selectSupportChat;
-function selectSupportChat(sessionId) {
-  _origSelectSupportChat(sessionId);
-  const chat = CS_CHATS.find(c => c.session_id === sessionId);
-  if (chat) renderVisitorInfo(chat);
-}
