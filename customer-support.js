@@ -22,6 +22,7 @@ function initCustomerSupport() {
     if (typeof startKBSync === 'function') startKBSync();
     if (typeof startEmailRequestsSync === 'function') startEmailRequestsSync();
     CS_INIT_DONE = true;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
   }
   loadSupportConfig();
 }
@@ -1271,5 +1272,28 @@ async function sendHumanReply() {
     inp.value = text; // restore on error
   } finally {
     if (sendBtn) sendBtn.disabled = false;
+  }
+}
+
+// ── Human Input Keyboard Handler ─────────────────────────────
+function csHumanInputKeydown(e) {
+  const el = e.target;
+  // Auto-grow textarea
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+
+  // Handle Enter to send
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendHumanReply();
+  }
+  // Handle Shift+Enter to Add Note
+  if (e.key === 'Enter' && e.shiftKey) {
+    e.preventDefault();
+    if (typeof addInternalNote === 'function') {
+      addInternalNote();
+    } else {
+      toast('Add Note feature not loaded yet', 'warning');
+    }
   }
 }

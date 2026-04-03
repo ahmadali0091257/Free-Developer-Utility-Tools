@@ -15,8 +15,8 @@
     storeName: 'Aezoon Store',
     botName: 'Aezoon Support',
     iconUrl: 'https://thumbs.dreamstime.com/b/support-customer-care-icon-elegant-cyan-blue-round-button-support-customer-care-icon-isolated-elegant-cyan-blue-round-button-99714974.jpg',
-    welcomeMsg: 'Salam! 👋 Main Aezoon Support hoon. Aapki kaise madad kar sakta hoon?',
-    placeholder: 'Apna sawal likhein...',
+    welcomeMsg: 'Hi there! 👋 I am the AI support assistant for Aezoon. How can I help you today?',
+    placeholder: 'Type your question here...',
     poweredBy: 'Powered by Aezoon AI',
     firebaseConfig: {
       apiKey: "AIzaSyC_asx16rLu7LmC3d-jRVBESrQvfrceuVo",
@@ -50,7 +50,13 @@
   const SESSION_ID = getSessionId();
 
   let db = null;
-  let AI_CONFIG = { model: 'gemini-1.5-flash', api_key: '', system_prompt: '' };
+  let AI_CONFIG = { 
+    model: 'gemini-1.5-flash', 
+    api_key: '', 
+    api_key_deepseek: '', // Separate key for DeepSeek Card Selection
+    model_router: 'deepseek-chat',
+    system_prompt: '' 
+  };
   let chatHistory = [];
   let isTyping = false;
   let chatOpen = false;
@@ -122,12 +128,33 @@
     return {stringValue:String(v)};
   }
 
-  // ── Load AI Config ────────────────────────────────────────────
+  // ── Load AI Config (Optimized with Caching) ───────────────────
   async function loadAIConfig() {
+    // 1. Check Cache first (Save Firebase Reads)
+    const cachedKB = localStorage.getItem('aezoon_kb_cache');
+    const cacheTime = localStorage.getItem('aezoon_kb_time');
+    // If cache is less than 1 hour old, use it
+    if (cachedKB && cacheTime && (Date.now() - cacheTime < 3600000)) {
+      AI_CONFIG.kb_cards = JSON.parse(cachedKB);
+      console.log('[Aezoon] KB loaded from cache ✓');
+    }
+
     const config = await fbGet('support_settings', 'config');
-    if (config) AI_CONFIG = { ...AI_CONFIG, ...config };
-    const kb = await fbGet('support_settings', 'knowledge_base');
-    if (kb && kb.cards) AI_CONFIG.kb_cards = kb.cards;
+    if (config) {
+      AI_CONFIG = { ...AI_CONFIG, ...config };
+      // Explicitly capture DeepSeek key if present
+      if (config.api_key_deepseek) AI_CONFIG.api_key_deepseek = config.api_key_deepseek;
+    }
+    
+    // Only fetch KB if not cached or cache expired
+    if (!AI_CONFIG.kb_cards) {
+      const kb = await fbGet('support_settings', 'knowledge_base');
+      if (kb && kb.cards) {
+        AI_CONFIG.kb_cards = kb.cards;
+        localStorage.setItem('aezoon_kb_cache', JSON.stringify(kb.cards));
+        localStorage.setItem('aezoon_kb_time', Date.now());
+      }
+    }
   }
 
   // ── Load History ──────────────────────────────────────────────
@@ -136,10 +163,7 @@
     if (data && data.messages) {
       chatHistory = data.messages;
       chatHistory.forEach(m => appendBubble(m.role, m.content, m.time, false));
-      // FIX: restore AI memory from Firestore so page refresh pe naam/language na bhule
-      if (data.ai_memory) {
-        Object.assign(AI_MEMORY, data.ai_memory);
-      }
+      if (data.ai_memory) Object.assign(AI_MEMORY, data.ai_memory);
     } else {
       appendBubble('bot', AI_CONFIG.welcome_msg || WIDGET_CONFIG.welcomeMsg, getTime(), false);
     }
@@ -147,34 +171,47 @@
     startChatListener();
   }
 
-  // ── Poll for human replies every 8s ──────────────────────────
+  // ── Smart Chat Listener (Save Firebase Reads) ──────────────────
   let lastMsgCount = 0;
-  let chatPollInterval = null; // FIX: track interval so we can clear it
+  let chatPollInterval = null;
+  let lastUserActivity = Date.now();
 
   function startChatListener() {
     lastMsgCount = chatHistory.length;
-    // FIX: clear any existing interval before starting new one (prevents duplicate loops)
     if (chatPollInterval) clearInterval(chatPollInterval);
+    
     chatPollInterval = setInterval(async () => {
+      // SMART POLLING: If user is idle for > 10 mins, slow down polling to 60s
+      const idleTime = Date.now() - lastUserActivity;
+      if (idleTime > 600000) { // 10 mins
+        console.log('[Aezoon] Session idle, slowing down polling...');
+        // Temporary slow down: Skip this poll if 8s doesn't divide into 60s
+        if (Math.random() > 0.15) return; 
+      }
+
       const data = await fbGet('support_chats', SESSION_ID);
       if (!data) return;
       const msgs = data.messages || [];
       isHumanModeActive = data.human_mode || false;
+      
       const statusEl = document.getElementById('aezoon-header-status');
-      if (statusEl) statusEl.innerHTML = isHumanModeActive
-        ? `<span class="aezoon-status-dot" style="background:#10b981;"></span> Support Agent is here`
-        : `<span class="aezoon-status-dot"></span> Online — Replies instantly`;
+      if (statusEl) {
+        statusEl.innerHTML = isHumanModeActive
+          ? `<span class="aezoon-status-dot" style="background:#10b981;"></span> Agent is here`
+          : `<span class="aezoon-status-dot"></span> Replies instantly`;
+      }
+
       if (msgs.length > lastMsgCount) {
         msgs.slice(lastMsgCount).forEach(m => {
           if (m.role === 'human_agent') {
-            chatHistory.push(m); // FIX: push to history so it doesn't get lost on next save
+            chatHistory.push(m);
             appendHumanAgentBubble(m.content, m.time, m.agent_name);
-            // Human replied — cancel email timer
             clearTimeout(humanEmailTimer);
             if (!chatOpen) { const d = document.getElementById('aezoon-unread-dot'); if(d) d.style.display='flex'; }
           }
         });
         lastMsgCount = msgs.length;
+        lastUserActivity = Date.now(); // Reset idle on new message
       }
     }, 8000);
   }
@@ -201,43 +238,34 @@
       ? `\n\nVISITOR MEMORY:\n- Name: ${AI_MEMORY.name || 'unknown'}\n- Language: ${AI_MEMORY.language || 'detecting'}\n- Mood: ${AI_MEMORY.sentiment || 'neutral'}\n- Topics discussed: ${AI_MEMORY.topics.slice(-5).join(', ') || 'none'}\n- Messages sent: ${AI_MEMORY.messageCount}`
       : '';
 
-    const basePrompt = `You are a friendly, professional customer support AI for ${WIDGET_CONFIG.storeName}.
+    const basePrompt = `You are a highly intelligent, empathetic, and professional customer support AI for ${WIDGET_CONFIG.storeName}.
 
-LANGUAGE RULE (MOST IMPORTANT):
-- First message is always in English from you
-- From the user's SECOND message onwards, detect their language automatically
-- Supported: English, Urdu, Roman Urdu, Arabic, and any other language
-- Always reply in the EXACT same language the user wrote in — never switch
+LANGUAGE RULE (STRICT):
+- Detect the user's language from their VERY FIRST message.
+- Always respond in the EXACT same language/script the user is using (Urdu, Roman Urdu, Arabic, English, etc.).
+- Never switch languages unless the user does.
+- Language consistency is professional; respect the user's choice of language.
 
-MEMORY RULES:
-- Remember the visitor's name if they mention it — use it naturally in replies
-- Remember their language and always respond in it
-- Remember what topics they asked about — don't repeat info already given
-- If visitor seems frustrated, be extra empathetic
+ANALYSIS & REASONING PROCESS:
+1. CUSTOMER QUERY: Carefully analyze the user's question, intent, and tone.
+2. MEMORY REVIEW: Check the "VISITOR MEMORY" below to remember their name, past topics, and mood.
+3. KB ANALYSIS: Review the "KNOWLEDGE BASE" specifically for facts, prices, and policies. If a KB card is provided, analyze it line-by-line to extract the exact answer.
+4. STRUCTURED RESPONSE: Draft an answer that is clear, bold, and easy to scan.
 
 FORMATTING RULES:
-- Use bullet points (•) for lists
-- Use numbered lists (1. 2. 3.) for steps
-- Use **bold** for important words
-- Keep answers short — max 4-5 lines
-- Never write long paragraphs
+- Use **bold** for key terms, store names, and important values.
+- Use bullet points (•) for multiple items or options.
+- Use numbered lists (1. 2. 3.) for step-by-step guides.
+- Keep answers concise and structured — max 4-6 lines. Avoid long "walls of text".
 
-ANSWER QUALITY RULES:
-- If KB card has the answer → use ONLY that info, be specific and accurate
-- If no KB card matches → give a helpful general answer, never make up specifics
-- If visitor asks for order status → ask for their order number first
-- If visitor is angry (mood: angry) → start with empathy: "I understand your frustration..."
-- Never say "I don't have access to your order" without offering an alternative
-- Always end with: "Kuch aur poochna hai?" or equivalent in visitor's language
+ANSWER QUALITY:
+- If KB context is provided → Use it carefully and accurately. Do not invent details.
+- If no KB context matches → Provide a polite general answer based on store tone, and offer human help.
+- If the visitor is unhappy (Mood: angry) → Use extra empathy and soft language.
+- Always end with a helpful follow-up question (e.g., "Kuch aur poochna hai?" in their language).
 
-HUMAN ESCALATION RULE:
-- Complex issues (payment failed, order missing, refund dispute, urgent complaint) → add [[HUMAN_NEEDED]] at the very END
-- Only for genuine complex issues, not simple questions
-
-BEHAVIOR:
-- Be warm, helpful, concise
-- If unsure, say so honestly and offer to connect with human
-- Never make up prices, policies, or product details`;
+HUMAN ESCALATION:
+- If the issue is complex (payment failures, refund logic, technical bugs) → Append [[HUMAN_NEEDED]] at the very end of your response.`;
 
     const systemPrompt = (AI_CONFIG.system_prompt
       ? basePrompt + '\n\nSTORE SPECIFIC INFO:\n' + AI_CONFIG.system_prompt
@@ -300,21 +328,54 @@ BEHAVIOR:
     }
   }
 
-  // ── RAG: Find relevant KB cards ───────────────────────────────
+  // ── ADVANCED RAG: Find relevant KB cards ─────────────────────
   function findRelevantKBCards(userMsg, cards) {
-    const msg = userMsg.toLowerCase();
+    const msg = userMsg.toLowerCase().trim();
+    const currentUrl = window.location.href.toLowerCase();
+    
     const scored = cards.map(card => {
       let score = 0;
+      const cardName = (card.name || '').toLowerCase();
+      const cardContent = (card.content || '').toLowerCase();
       const keywords = (card.keywords || '').toLowerCase().split(',').map(k => k.trim()).filter(Boolean);
-      const name = (card.name || '').toLowerCase();
+
+      // 1. Exact Phrase Match in User Message (High Value)
+      if (msg.includes(cardName)) score += 20;
+
+      // 2. Keyword Matching with Weights
       keywords.forEach(kw => {
-        if (kw && msg.includes(kw)) score += 10;
-        if (kw && kw.length > 3 && msg.split(' ').some(w => w.includes(kw) || kw.includes(w))) score += 3;
+        if (msg.includes(kw)) {
+          // Unique/Longer keywords are more specific
+          score += kw.length > 5 ? 12 : 8;
+        }
+        // Partial word matching (fuzzy)
+        if (kw.length > 4) {
+          const parts = msg.split(/\s+/);
+          if (parts.some(p => p.includes(kw) || kw.includes(p))) score += 4;
+        }
       });
-      name.split(' ').forEach(w => { if (w.length > 2 && msg.includes(w)) score += 4; });
+
+      // 3. Content Scan (Deep Search)
+      if (cardContent.includes(msg)) score += 5;
+
+      // 4. Page Awareness (Contextual Boost)
+      // Agar user shipping page par hai aur card 'Shipping' ke baare mein hai
+      if (currentUrl.includes(cardName.split(' ')[0])) score += 10;
+      keywords.forEach(kw => {
+        if (kw.length > 4 && currentUrl.includes(kw)) score += 5;
+      });
+
+      // 5. Urdu Character Support (Basic)
+      if (/[\u0600-\u06FF]/.test(msg) && cardContent.includes(msg)) score += 15;
+
       return { ...card, score };
     });
-    return scored.filter(c => c.score > 0).sort((a, b) => b.score - a.score).slice(0, 2);
+
+    // Sort and return top 3 (increased from 2 for better context)
+    return scored
+      .filter(c => c.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
   }
 
   let isHumanModeActive = false; // synced from Firestore listener — declared once here
@@ -492,11 +553,11 @@ BEHAVIOR:
     // Detect language from user message
     const hasUrdu = /[\u0600-\u06FF]/.test(userMsg);
     const hasArabic = /[\u0621-\u064A]/.test(userMsg);
-    const romanUrduWords = /\b(hai|hain|kya|mera|meri|aap|yeh|woh|karo|kare|nahi|bhi|aur|se|ko|ka|ki|ke)\b/i.test(userMsg);
+    const romanUrduWords = /\b(hai|hain|kya|mera|meri|aap|yeh|woh|karo|kare|nahi|bhi|aur|se|ko|ka|ki|ke|ha|hy|raha|rha|gaya|gye|chahiye)\b/i.test(userMsg);
     if (hasUrdu) AI_MEMORY.language = 'Urdu';
     else if (hasArabic) AI_MEMORY.language = 'Arabic';
     else if (romanUrduWords) AI_MEMORY.language = 'Roman Urdu';
-    else if (AI_MEMORY.messageCount > 1) AI_MEMORY.language = AI_MEMORY.language || 'English';
+    else AI_MEMORY.language = 'English';
 
     // Detect sentiment
     const angryWords = /\b(angry|frustrated|terrible|worst|useless|refund|scam|fraud|cheated|problem|issue|complaint)\b/i.test(userMsg);

@@ -125,8 +125,8 @@ function renderSupportChatList() {
 function openChatSearch() {
   const bar = document.getElementById('csChatSearchBar');
   if (!bar) return;
-  bar.style.display = bar.style.display === 'none' ? 'flex' : 'none';
-  if (bar.style.display === 'flex') document.getElementById('csChatSearchInp')?.focus();
+  bar.classList.toggle('open');
+  if (bar.classList.contains('open')) document.getElementById('csChatSearchInp')?.focus();
 }
 
 function searchInChat() {
@@ -294,7 +294,7 @@ function openVisitorPopup(sessionId) {
 function closeVisitorPopup() {
   document.getElementById('csVisitorPopup')?.classList.remove('open');
 }
-}
+
 
 // ══════════════════════════════════════════════════════════════
 // ── 5. CHAT HISTORY TIMELINE ──────────────────────────────────
@@ -342,7 +342,7 @@ async function generateAIDraft() {
   if (!key) return toast('API key nahi hai', 'error');
 
   const btn = document.getElementById('csAiDraftBtn');
-  if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
+  if (btn) { btn.innerHTML = '⏳ Drafting...'; btn.disabled = true; }
 
   const msgs = chat.messages || [];
   const lastUserMsg = [...msgs].reverse().find(m => m.role === 'user');
@@ -383,7 +383,7 @@ Return ONLY the reply text, nothing else.`;
     if (inp) { inp.value = result; inp.style.height='auto'; inp.style.height=Math.min(inp.scrollHeight,100)+'px'; inp.focus(); }
     toast('✨ Draft ready — edit aur send karo', 'success');
   } catch(e) { toast('Error: '+e.message, 'error'); }
-  finally { if(btn){btn.textContent='✨ AI Draft';btn.disabled=false;} }
+  finally { if(btn){btn.innerHTML='<i data-lucide="sparkles" width="11" height="11"></i> AI Draft'; btn.disabled=false; if(typeof lucide!=='undefined') lucide.createIcons();} }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -403,7 +403,7 @@ async function translateReply() {
   if (!key) return toast('API key nahi hai', 'error');
 
   const btn = document.getElementById('csTranslateBtn');
-  if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
+  if (btn) { btn.innerHTML = '⏳ Translating...'; btn.disabled = true; }
 
   try {
     const prompt = `Translate this text to ${targetLang}. Return ONLY the translated text:\n\n"${text}"`;
@@ -430,7 +430,7 @@ async function translateReply() {
     inp.style.height = Math.min(inp.scrollHeight, 100) + 'px';
     toast(`Translated to ${targetLang}`, 'success');
   } catch(e) { toast('Error: '+e.message, 'error'); }
-  finally { if(btn){btn.textContent='🌐 Translate';btn.disabled=false;} }
+  finally { if(btn){btn.innerHTML='<i data-lucide="globe" width="11" height="11"></i> Translate'; btn.disabled=false; if(typeof lucide!=='undefined') lucide.createIcons();} }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -507,7 +507,7 @@ async function saveCannedResponse() {
 // ── 9. INTERNAL NOTES ─────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════
 async function addInternalNote() {
-  const inp = document.getElementById('csNoteInp');
+  const inp = document.getElementById('csNoteInp') || document.getElementById('csHumanReplyInp');
   const text = inp?.value.trim();
   if (!text || !CS_SELECTED_SESSION) return;
   const chat = CS_CHATS.find(c => c.session_id === CS_SELECTED_SESSION);

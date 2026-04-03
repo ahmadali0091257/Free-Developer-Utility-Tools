@@ -1498,3 +1498,63 @@
   font-size: 0.68rem;
   padding: 4px 8px;
 }
+
+/* ── INTERNAL NOTES & AGENT BADGES ── */
+.cs-msg-row.cs-note-row {
+  justify-content: center;
+  margin: 0.6rem 0;
+}
+.cs-internal-note {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px dashed rgba(245, 158, 11, 0.4);
+  color: #d97706;
+  padding: 0.5rem 0.9rem;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  width: 92%;
+  max-width: 500px;
+}
+.cs-note-icon { font-size: 0.9rem; }
+.cs-note-agent { font-weight: 700; color: #b45309; }
+
+.cs-bubble-agent {
+  background: rgba(16, 185, 129, 0.08) !important;
+  border-right: 3.5px solid #10b981 !important;
+  color: var(--text) !important;
+  border-radius: 14px 2px 14px 14px !important;
+}
+.cs-agent-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #059669;
+  margin-bottom: 3px;
+  letter-spacing: 0.03em;
+}
+
+.cs-angry-banner {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  padding: 0.5rem 0.8rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.6rem;
+  text-align: center;
+}
+.cs-human-alert-banner {
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  color: #6366f1;
+  padding: 0.5rem 0.8rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.6rem;
+  text-align: center;
+}
+
