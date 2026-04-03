@@ -167,6 +167,7 @@
       if (msgs.length > lastMsgCount) {
         msgs.slice(lastMsgCount).forEach(m => {
           if (m.role === 'human_agent') {
+            chatHistory.push(m); // FIX: push to history so it doesn't get lost on next save
             appendHumanAgentBubble(m.content, m.time, m.agent_name);
             // Human replied — cancel email timer
             clearTimeout(humanEmailTimer);
@@ -345,8 +346,8 @@ BEHAVIOR:
     isTyping = true;
 
     // IMPROVEMENT: Complex question detect karo — deep thinking mode
-    const isComplexQuestion = userMsg.split(' ').length > 8 ||
-      /\b(explain|compare|difference|why|how does|what happens|detail|step by step|process|kaise|kyun|farq|samjhao|detail mein|tafseel)\b/i.test(userMsg);
+    const isComplexQuestion = text.split(' ').length > 8 ||
+      /\b(explain|compare|difference|why|how does|what happens|detail|step by step|process|kaise|kyun|farq|samjhao|detail mein|tafseel)\b/i.test(text);
 
     try {
       // Deep thinking indicator for complex questions

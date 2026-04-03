@@ -2008,12 +2008,16 @@ auth.onAuthStateChanged(user => {
     if (typeof startNotesSync === 'function') startNotesSync();
     if (typeof startActivitySync === 'function') startActivitySync();
     if (typeof startSessionLogSync === 'function') startSessionLogSync();
+    if (typeof startAlertsSync === 'function') startAlertsSync();
+    if (typeof startEmailRequestsSync === 'function') startEmailRequestsSync();
     logSession();
     initMultiTabSync();
     startPresence();
     loadDisplayName();
     initApp();
     if (typeof loadSupportConfig === 'function') loadSupportConfig();
+    // Pre-initialize support if function exists
+    if (typeof initCustomerSupport === 'function') initCustomerSupport();
   } else {
     lock.style.display = 'flex';
     app.style.display = 'none';
