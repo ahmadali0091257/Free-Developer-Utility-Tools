@@ -585,6 +585,11 @@ tr:last-child td { border-bottom:none; }
     <span>Customer Support</span>
     <span id="supportNavBadge" style="display:none;background:#ef4444;color:#fff;font-size:0.62rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:10px;min-width:18px;text-align:center;margin-left:auto;">0</span>
   </div>
+  <div class="nav-item" onclick="nav('email-requests')" id="nav-email-requests">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+    <span>Email Requests</span>
+    <span id="emailReqNavBadge" style="display:none;background:#f59e0b;color:#fff;font-size:0.62rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:10px;min-width:18px;text-align:center;margin-left:auto;">0</span>
+  </div>
 
   <div class="sidebar-bottom">
     <a href="personal.html" class="nav-item" style="background:linear-gradient(135deg,rgba(139,92,246,0.12),rgba(99,102,241,0.08));border:1px solid rgba(139,92,246,0.3);border-radius:8px;">
@@ -1134,9 +1139,14 @@ tr:last-child td { border-bottom:none; }
                 <div class="cs-chat-header-name" id="csChatHeaderName">Visitor</div>
                 <div class="cs-chat-header-sub" id="csChatHeaderSub"></div>
               </div>
-              <div style="display:flex;gap:0.5rem;align-items:center;">
+              <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
+                <button class="btn btn-outline btn-sm" id="csSoundToggle" onclick="toggleSupportSound()" title="Sound">🔔</button>
+                <button class="btn btn-outline btn-sm" onclick="openChatSearch()" title="Search">🔍</button>
+                <button class="btn btn-outline btn-sm" onclick="togglePinChat(CS_SELECTED_SESSION)" title="Pin">📌</button>
+                <button class="btn btn-outline btn-sm" onclick="showChatHistoryTimeline(CS_SELECTED_SESSION)" title="History">🕐</button>
+                <button class="btn btn-outline btn-sm" id="csAiDraftBtn" onclick="generateAIDraft()">✨ Draft</button>
                 <div class="cs-human-mode-toggle" id="csHumanModeToggle">
-                  <span class="cs-hm-label" id="csHumanModeLabel">🤖 AI Mode</span>
+                  <span class="cs-hm-label" id="csHumanModeLabel">🤖 AI</span>
                   <label class="cs-hm-switch">
                     <input type="checkbox" id="csHumanModeCheck" onchange="toggleHumanMode(this.checked)">
                     <span class="cs-hm-slider"></span>
@@ -1145,21 +1155,45 @@ tr:last-child td { border-bottom:none; }
                 <button class="btn btn-danger btn-sm" onclick="deleteSupportChat()">🗑</button>
               </div>
             </div>
+            <!-- Chat search bar -->
+            <div id="csChatSearchBar" style="display:none;padding:0.5rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);display:none;align-items:center;gap:0.5rem;">
+              <input class="inp" id="csChatSearchInp" placeholder="Search in this chat..." style="flex:1;font-size:0.82rem;" oninput="searchInChat()">
+              <button class="btn btn-outline btn-sm" onclick="document.getElementById('csChatSearchBar').style.display='none'">✕</button>
+            </div>
             <!-- Tag bar -->
             <div class="cs-tag-bar" id="csChatTagBar"></div>
-            <!-- Messages -->
-            <div class="cs-chat-messages" id="csChatMessages"></div>
+            <!-- Messages + Visitor Info -->
+            <div style="display:flex;flex:1;overflow:hidden;">
+              <div class="cs-chat-messages" id="csChatMessages"></div>
+              <div id="csVisitorInfo" style="width:190px;flex-shrink:0;border-left:1px solid var(--border);overflow-y:auto;background:var(--surface2);"></div>
+            </div>
             <!-- Human Reply Input -->
             <div class="cs-human-reply-area" id="csHumanReplyArea" style="display:none;">
               <div class="cs-human-reply-badge">👨‍💼 You (Support Agent)</div>
+              <!-- Canned responses panel -->
+              <div id="csCannedPanel" style="display:none;max-height:180px;overflow-y:auto;border-bottom:1px solid var(--border);background:var(--surface2);">
+                <div style="padding:0.5rem 0.8rem;font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:1px solid var(--border);">Quick Replies</div>
+                <div id="csCannedList"></div>
+                <div style="padding:0.5rem 0.8rem;border-top:1px solid var(--border);">
+                  <input class="inp" id="csNewCannedTitle" placeholder="Title" style="font-size:0.78rem;margin-bottom:0.3rem;">
+                  <input class="inp" id="csNewCannedText" placeholder="Reply text..." style="font-size:0.78rem;margin-bottom:0.3rem;">
+                  <button class="btn btn-primary btn-sm" onclick="saveCannedResponse()">+ Save</button>
+                </div>
+              </div>
               <div class="cs-human-reply-row">
-                <textarea class="cs-human-reply-inp" id="csHumanReplyInp"
-                  placeholder="Type your reply to the visitor..."
-                  onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendHumanReply()}"
-                  oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
-                <button class="cs-human-send-btn" onclick="sendHumanReply()">
+                <div style="display:flex;gap:0.4rem;padding:0.4rem 0.6rem 0;flex-wrap:wrap;">
+                  <button class="btn btn-outline btn-sm" id="csTranslateBtn" onclick="translateReply()">🌐 Translate</button>
+                  <button class="btn btn-outline btn-sm" onclick="toggleCannedPanel()">⚡ Quick</button>
+                </div>
+                <div style="display:flex;gap:0.5rem;padding:0.4rem 0.6rem;">
+                  <textarea class="cs-human-reply-inp" id="csHumanReplyInp"
+                    placeholder="Type your reply..."
+                    onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendHumanReply()}"
+                    oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
+                  <button class="cs-human-send-btn" onclick="sendHumanReply()">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                 </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1284,6 +1318,37 @@ tr:last-child td { border-bottom:none; }
       </div>
     </div>
   </div>
+
+  <!-- EMAIL REQUESTS PAGE -->
+  <div class="page" id="page-email-requests">
+    <div class="page-header">
+      <div>
+        <div class="page-title">📧 Email Requests</div>
+        <div class="page-sub">Visitors who requested email support — reply within 24 hours</div>
+      </div>
+      <div style="display:flex;gap:0.6rem;align-items:center;">
+        <select class="inp" id="emailReqFilter" onchange="renderEmailRequests()" style="max-width:160px;">
+          <option value="">All Requests</option>
+          <option value="pending">⏳ Pending</option>
+          <option value="in_progress">🔄 In Progress</option>
+          <option value="resolved">✅ Resolved</option>
+        </select>
+      </div>
+    </div>
+    <div id="emailReqStats" class="cs-stats-row" style="margin-bottom:1.5rem;gap:1rem;"></div>
+    <div id="emailReqList"></div>
+  </div>
+
+<!-- CHAT HISTORY TIMELINE MODAL -->
+<div class="modal-bg" id="csHistoryModal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <h3>🕐 Chat History Timeline</h3>
+      <button class="modal-close" onclick="closeModal('csHistoryModal')">✕</button>
+    </div>
+    <div id="csHistoryContent" style="max-height:70vh;overflow-y:auto;"></div>
+  </div>
+</div>
 
 <!-- KNOWLEDGE BASE CARD MODAL -->
 <div class="modal-bg" id="kbModal">
@@ -1988,6 +2053,7 @@ function nav(page) {
   if (page === 'settings') { renderSettings(); loadDisplayName(); }
   if (page === 'history') renderHistory();
   if (page === 'support') { if(typeof initCustomerSupport==='function') initCustomerSupport(); }
+  if (page === 'email-requests') { if(typeof renderEmailRequests==='function') renderEmailRequests(); }
   updatePresence(page);
 }
 
@@ -3601,18 +3667,34 @@ function paiQuickAction(a) {}
 function paiRestoreVersion(i) {}
 function toggleHumanMode(v) {}
 function sendHumanReply() {}
+// Advanced support stubs
+function toggleSupportSound() {}
+function openChatSearch() {}
+function searchInChat() {}
+function togglePinChat(s) {}
+function showChatHistoryTimeline(s) {}
+function generateAIDraft() {}
+function translateReply() {}
+function toggleCannedPanel() {}
+function saveCannedResponse() {}
+function renderEmailRequests() {}
+function updateEmailReqStatus(i,s) {}
+function saveEmailReqNote(i) {}
+function deleteEmailReq(i) {}
+function viewEmailReqChat(s) {}
 function exportBackup() { /* overridden by working.js */ }
 function importBackup(e) { /* overridden by working.js */ }
 function confirmClearLocalData() { /* overridden by working.js */ }
 function confirmClearData() { /* overridden by working.js */ }
 </script>
 
-  <script src="https://ask-ai-widget.lovable.app/widget.js" data-business-id="1fa8a448-8ba1-4a1c-850d-fc353445655f"></script>
+  
 <!-- working.js: Fixes KEYS, saveGoal, renderSettings, showOrderDetail & legacy functions -->
 <script src="working.js"></script>
 <script src="ai.js"></script>
 <script src="customer-support.js"></script>
 <script src="knowledge-base.js"></script>
+<script src="support-advanced.js"></script>
 <script>startLiveClock();</script>
 </body>
 </html>

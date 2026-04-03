@@ -54,6 +54,22 @@
   let chatHistory = [];
   let isTyping = false;
   let chatOpen = false;
+  let isHumanModeActive = false;
+
+  // ── AI Memory — visitor ka naam, language, preferences ────────
+  const AI_MEMORY = {
+    name: null,
+    language: null,
+    sentiment: null,
+    email: null,
+    topics: [],
+    messageCount: 0,
+    sessionStart: Date.now()
+  };
+
+  // ── Human timeout tracker ─────────────────────────────────────
+  let humanTimeoutTimer = null;
+  const HUMAN_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
   // ── Firebase REST API — no SDK, no CSP issues ────────────────
   const FB_PROJECT = WIDGET_CONFIG.firebaseConfig.projectId;
@@ -168,6 +184,12 @@
     const model = AI_CONFIG.model || 'gemini-1.5-flash';
     const key = AI_CONFIG.api_key || '';
     if (!key) return 'Sorry, AI abhi available nahi hai. Please baad mein try karein.';
+
+    // Build memory context
+    const memCtx = AI_MEMORY.name || AI_MEMORY.language || AI_MEMORY.topics.length
+      ? `\n\nVISITOR MEMORY:\n- Name: ${AI_MEMORY.name || 'unknown'}\n- Language: ${AI_MEMORY.language || 'detecting'}\n- Mood: ${AI_MEMORY.sentiment || 'neutral'}\n- Topics discussed: ${AI_MEMORY.topics.slice(-5).join(', ') || 'none'}\n- Messages sent: ${AI_MEMORY.messageCount}`
+      : '';
+
     const basePrompt = `You are a friendly, professional customer support AI for ${WIDGET_CONFIG.storeName}.
 
 LANGUAGE RULE (MOST IMPORTANT):
@@ -176,26 +198,31 @@ LANGUAGE RULE (MOST IMPORTANT):
 - Supported: English, Urdu, Roman Urdu, Arabic, and any other language
 - Always reply in the EXACT same language the user wrote in — never switch
 
-FORMATTING RULES (always follow):
-- Use bullet points (•) for lists of features, steps, or options
-- Use numbered lists (1. 2. 3.) for step-by-step instructions
-- Use **bold** for important words, product names, prices
-- Keep answers short and clear — max 4-5 lines unless detail is needed
-- Never write long paragraphs — break into bullets
+MEMORY RULES:
+- Remember the visitor's name if they mention it — use it naturally in replies
+- Remember their language and always respond in it
+- Remember what topics they asked about — don't repeat info already given
+- If visitor seems frustrated, be extra empathetic
 
-HUMAN ESCALATION RULE (very important):
-- If the user has a complex issue you cannot fully resolve (e.g. payment failed, order missing, refund dispute, account problem, urgent complaint), add [[HUMAN_NEEDED]] at the very END of your reply — nothing after it
-- Only add [[HUMAN_NEEDED]] when the issue genuinely needs a human — not for simple questions
-- Example: "I'm sorry about this issue with your order. Let me explain what I know... [[HUMAN_NEEDED]]"
+FORMATTING RULES:
+- Use bullet points (•) for lists
+- Use numbered lists (1. 2. 3.) for steps
+- Use **bold** for important words
+- Keep answers short — max 4-5 lines
+- Never write long paragraphs
+
+HUMAN ESCALATION RULE:
+- Complex issues (payment failed, order missing, refund dispute, urgent complaint) → add [[HUMAN_NEEDED]] at the very END
+- Only for genuine complex issues, not simple questions
 
 BEHAVIOR:
-- Be warm, helpful, and concise
-- If you don't know something, say so honestly and offer to help further
-- Never make up prices, policies, or product details not in your knowledge`;
+- Be warm, helpful, concise
+- If unsure, say so honestly
+- Never make up prices, policies, or product details`;
 
-    const systemPrompt = AI_CONFIG.system_prompt
+    const systemPrompt = (AI_CONFIG.system_prompt
       ? basePrompt + '\n\nSTORE SPECIFIC INFO:\n' + AI_CONFIG.system_prompt
-      : basePrompt;
+      : basePrompt) + memCtx;
 
     // ── RAG: Find relevant KB cards ───────────────────────────
     let kbContext = '';
@@ -204,9 +231,7 @@ BEHAVIOR:
       const relevant = findRelevantKBCards(userMsg, kbCards);
       if (relevant.length) {
         kbContext = '\n\n--- RELEVANT KNOWLEDGE BASE ---\n';
-        relevant.forEach(c => {
-          kbContext += `\n[${c.icon || '📄'} ${c.name}]\n${c.content}\n`;
-        });
+        relevant.forEach(c => { kbContext += `\n[${c.icon || '📄'} ${c.name}]\n${c.content}\n`; });
         kbContext += '\n--- USE ABOVE INFO TO ANSWER ---';
       }
     }
@@ -296,20 +321,144 @@ BEHAVIOR:
       isTyping = false;
       chatHistory.push({ role: 'assistant', content: reply, time: getTime() });
       appendBubble('bot', reply, getTime(), true);
-      saveChat();
 
-      // Check if AI flagged this as a complex issue needing human
+      // Update AI memory
+      updateMemory(text, reply);
+      saveChat();
+      saveChatWithMemory();
+
+      // Start human timeout (if no human reply in 30min, show email form)
+      resetHumanTimeout();
+
+      // Check if AI flagged complex issue
       if (reply.includes('[[HUMAN_NEEDED]]')) {
         const cleanReply = reply.replace('[[HUMAN_NEEDED]]', '').trim();
-        // Replace last bubble with clean text
         const bubbles = document.querySelectorAll('#aezoon-messages .aezoon-bubble.bot');
-        if (bubbles.length) bubbles[bubbles.length - 1].querySelector('.aezoon-p, p')?.remove();
+        if (bubbles.length) {
+          const last = bubbles[bubbles.length - 1];
+          last.innerHTML = formatMessage(cleanReply) + `<div class="aezoon-bubble-time">${getTime()}</div>`;
+        }
         showHumanSupportOffer(cleanReply);
       }
     } catch (e) {
       hideTyping();
       isTyping = false;
       appendBubble('bot', '❌ Error: ' + e.message, getTime(), true);
+    }
+  }
+
+  // ── AI Memory Update ──────────────────────────────────────────
+  function updateMemory(userMsg, aiReply) {
+    AI_MEMORY.messageCount++;
+
+    // Detect name — "my name is X" / "I am X" / "mera naam X hai"
+    const nameMatch = userMsg.match(/(?:my name is|i am|i'm|mera naam|main hoon)\s+([A-Za-z]+)/i);
+    if (nameMatch) AI_MEMORY.name = nameMatch[1];
+
+    // Detect language from user message
+    const hasUrdu = /[\u0600-\u06FF]/.test(userMsg);
+    const hasArabic = /[\u0621-\u064A]/.test(userMsg);
+    const romanUrduWords = /\b(hai|hain|kya|mera|meri|aap|yeh|woh|karo|kare|nahi|bhi|aur|se|ko|ka|ki|ke)\b/i.test(userMsg);
+    if (hasUrdu) AI_MEMORY.language = 'Urdu';
+    else if (hasArabic) AI_MEMORY.language = 'Arabic';
+    else if (romanUrduWords) AI_MEMORY.language = 'Roman Urdu';
+    else if (AI_MEMORY.messageCount > 1) AI_MEMORY.language = AI_MEMORY.language || 'English';
+
+    // Detect sentiment
+    const angryWords = /\b(angry|frustrated|terrible|worst|useless|refund|scam|fraud|cheated|problem|issue|complaint)\b/i.test(userMsg);
+    const happyWords = /\b(thanks|thank you|great|awesome|perfect|love|excellent|shukriya|jazakallah)\b/i.test(userMsg);
+    if (angryWords) AI_MEMORY.sentiment = 'angry';
+    else if (happyWords) AI_MEMORY.sentiment = 'happy';
+
+    // Track topics
+    const topicKeywords = ['shipping', 'return', 'refund', 'order', 'payment', 'product', 'delivery', 'cancel', 'track'];
+    topicKeywords.forEach(t => { if (userMsg.toLowerCase().includes(t) && !AI_MEMORY.topics.includes(t)) AI_MEMORY.topics.push(t); });
+  }
+
+  async function saveChatWithMemory() {
+    try {
+      await fbSet('support_chats', SESSION_ID, {
+        session_id: SESSION_ID,
+        store: WIDGET_CONFIG.storeName,
+        page: window.location.href,
+        updated_at: Date.now(),
+        messages: chatHistory.slice(-40),
+        ai_memory: AI_MEMORY,
+        sentiment: AI_MEMORY.sentiment || ''
+      });
+    } catch(e) {}
+  }
+
+  // ── Human Timeout → Email Form ────────────────────────────────
+  function resetHumanTimeout() {
+    clearTimeout(humanTimeoutTimer);
+    humanTimeoutTimer = setTimeout(() => {
+      // Check if human mode is active but no reply came
+      if (isHumanModeActive) {
+        showEmailCollectionForm();
+      }
+    }, HUMAN_TIMEOUT_MS);
+  }
+
+  function showEmailCollectionForm() {
+    const msgs = document.getElementById('aezoon-messages');
+    if (!msgs || document.getElementById('aezoon-email-form')) return;
+
+    const form = document.createElement('div');
+    form.id = 'aezoon-email-form';
+    form.className = 'aezoon-email-card';
+    form.innerHTML = `
+      <div class="aezoon-email-icon">📧</div>
+      <div class="aezoon-email-title">Our team will get back to you!</div>
+      <div class="aezoon-email-sub">Please enter your email — we'll reply within 24 hours.</div>
+      <input class="aezoon-email-inp" id="aezoon-email-inp" type="email" placeholder="your@email.com">
+      <div class="aezoon-email-btns">
+        <button class="aezoon-email-submit" id="aezoon-email-submit-btn">📨 Submit</button>
+        <button class="aezoon-email-cancel" id="aezoon-email-cancel-btn">Cancel</button>
+      </div>
+      <div class="aezoon-email-status" id="aezoon-email-status"></div>`;
+    msgs.appendChild(form);
+    scrollBottom();
+
+    document.getElementById('aezoon-email-submit-btn').addEventListener('click', submitEmailRequest);
+    document.getElementById('aezoon-email-cancel-btn').addEventListener('click', () => form.remove());
+  }
+
+  async function submitEmailRequest() {
+    const emailInp = document.getElementById('aezoon-email-inp');
+    const email = emailInp?.value.trim();
+    const statusEl = document.getElementById('aezoon-email-status');
+    if (!email || !email.includes('@')) {
+      if (statusEl) statusEl.textContent = '❌ Please enter a valid email';
+      return;
+    }
+    if (statusEl) statusEl.textContent = '⏳ Submitting...';
+
+    // Save email request
+    AI_MEMORY.email = email;
+    const lastUserMsg = [...chatHistory].reverse().find(m => m.role === 'user');
+
+    try {
+      await fbSet('support_email_requests', 'req_' + Date.now(), {
+        email,
+        session_id: SESSION_ID,
+        page: window.location.href,
+        store: WIDGET_CONFIG.storeName,
+        issue: lastUserMsg?.content || 'No message',
+        language: AI_MEMORY.language || 'unknown',
+        visitor_name: AI_MEMORY.name || '',
+        status: 'pending',
+        created_at: Date.now()
+      });
+      await saveChatWithMemory();
+
+      if (statusEl) statusEl.textContent = '';
+      document.getElementById('aezoon-email-form')?.remove();
+      appendBubble('bot',
+        `✅ Thank you! We've received your request. Our team will email you at **${email}** within 24 hours with a solution.`,
+        getTime(), true);
+    } catch(e) {
+      if (statusEl) statusEl.textContent = '❌ Error. Please try again.';
     }
   }
 
@@ -579,6 +728,16 @@ ol.aezoon-list{list-style:decimal;padding-left:20px}
 @keyframes aezoonBubbleBot{0%{opacity:0;transform:translateX(-10px) scale(.96)}100%{opacity:1;transform:translateX(0) scale(1)}}
 @keyframes aezoonDot{0%,60%,100%{transform:translateY(0);opacity:.35}30%{transform:translateY(-6px);opacity:1}}
 @keyframes aezoonPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.4)}}
+.aezoon-email-card{background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(14,165,233,.06));border:1.5px solid rgba(99,102,241,.3);border-radius:14px;padding:14px;margin:4px 0;animation:aezoonBubbleBot .3s ease both;text-align:center}
+.aezoon-email-icon{font-size:1.8rem;margin-bottom:6px}
+.aezoon-email-title{font-size:13.5px;font-weight:700;color:#1e293b;margin-bottom:4px}
+.aezoon-email-sub{font-size:11.5px;color:#64748b;margin-bottom:10px}
+.aezoon-email-inp{width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:13px;outline:none;font-family:inherit;color:#1e293b;background:#f8fafc;margin-bottom:8px;transition:border-color .2s}
+.aezoon-email-inp:focus{border-color:#6366f1}
+.aezoon-email-btns{display:flex;gap:8px}
+.aezoon-email-submit{flex:1;background:linear-gradient(135deg,#6366f1,#0ea5e9);color:#fff;border:none;border-radius:20px;padding:8px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit}
+.aezoon-email-cancel{background:#f1f5f9;color:#64748b;border:none;border-radius:20px;padding:8px 12px;font-size:12px;cursor:pointer;font-family:inherit}
+.aezoon-email-status{font-size:11px;color:#ef4444;margin-top:6px;min-height:16px}
 @media(max-width:480px){#aezoon-chat-box{width:calc(100vw - 16px);height:72vh;right:8px;bottom:84px;border-radius:16px}#aezoon-widget-btn{bottom:16px;right:16px}}
       `;
       document.head.appendChild(style);

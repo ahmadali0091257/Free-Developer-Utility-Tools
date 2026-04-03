@@ -20,6 +20,7 @@ function initCustomerSupport() {
     startAlertsSync();
     requestNotifPermission();
     if (typeof startKBSync === 'function') startKBSync();
+    if (typeof startEmailRequestsSync === 'function') startEmailRequestsSync();
     CS_INIT_DONE = true;
   }
   loadSupportConfig();
@@ -1010,11 +1011,8 @@ let CS_ALERTS = [];
 function showDashboardAlert(alert) {
   CS_ALERTS.unshift(alert);
   renderDashboardAlerts();
-
-  // Also show toast
+  if (typeof playSupportSound === 'function') playSupportSound();
   toast(alert.title + ' — ' + alert.body, alert.type === 'human' ? 'error' : 'success');
-
-  // Update nav badge
   updateSupportNavBadge();
 }
 

@@ -1213,3 +1213,54 @@
   color: #10b981;
   margin-bottom: 4px;
 }
+
+/* ── ADVANCED FEATURES CSS ── */
+
+/* Pinned chat */
+.cs-pinned { border-left: 3px solid var(--warning) !important; }
+
+/* Search highlight */
+.cs-search-highlight {
+  background: rgba(245,158,11,0.35);
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+/* Visitor info card */
+.cs-visitor-card { padding: 0.8rem; }
+.cs-visitor-header { display:flex; align-items:center; gap:0.6rem; margin-bottom:0.8rem; }
+.cs-visitor-avatar { width:32px; height:32px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:700; flex-shrink:0; }
+.cs-visitor-name { font-size:0.82rem; font-weight:700; color:var(--text); }
+.cs-visitor-lang { font-size:0.72rem; color:var(--muted); }
+.cs-visitor-rows { display:flex; flex-direction:column; gap:0.3rem; }
+.cs-vrow { display:flex; align-items:flex-start; gap:0.4rem; font-size:0.72rem; color:var(--muted); }
+.cs-visitor-notes { margin-top:0.6rem; font-size:0.72rem; color:var(--text); background:var(--surface); border-radius:var(--radius-sm); padding:0.4rem 0.6rem; border:1px solid var(--border); }
+
+/* History timeline */
+.cs-timeline-date { font-size:0.72rem; font-weight:700; color:var(--muted); text-transform:uppercase; padding:0.5rem 0; border-bottom:1px solid var(--border); margin-bottom:0.5rem; }
+.cs-timeline-msg { padding:0.6rem 0.8rem; border-radius:var(--radius-sm); margin-bottom:0.4rem; }
+.cs-timeline-msg.user { background:var(--primary-light); border-left:3px solid var(--primary); }
+.cs-timeline-msg.assistant { background:var(--surface2); border-left:3px solid var(--border); }
+.cs-timeline-msg.human_agent { background:rgba(16,185,129,0.08); border-left:3px solid #10b981; }
+.cs-timeline-role { font-size:0.68rem; font-weight:700; color:var(--muted); text-transform:uppercase; margin-bottom:0.2rem; }
+.cs-timeline-text { font-size:0.82rem; color:var(--text); line-height:1.4; }
+.cs-timeline-time { font-size:0.65rem; color:var(--muted); margin-top:0.2rem; }
+
+/* Canned responses */
+.cs-canned-item { padding:0.6rem 0.8rem; cursor:pointer; border-bottom:1px solid var(--border); transition:background 0.12s; }
+.cs-canned-item:hover { background:var(--primary-light); }
+.cs-canned-title { font-size:0.78rem; font-weight:700; color:var(--text); }
+.cs-canned-preview { font-size:0.72rem; color:var(--muted); margin-top:1px; }
+
+/* Email requests page */
+.email-req-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.2rem; margin-bottom:1rem; box-shadow:var(--shadow-sm); }
+.email-req-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:0.6rem; }
+.email-req-email { font-size:0.9rem; font-weight:700; color:var(--text); }
+.email-req-meta { font-size:0.75rem; color:var(--muted); margin-top:2px; }
+.email-req-issue { font-size:0.85rem; color:var(--text); background:var(--surface2); border-radius:var(--radius-sm); padding:0.6rem 0.8rem; margin-bottom:0.8rem; line-height:1.5; }
+.email-req-actions { display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap; margin-bottom:0.6rem; }
+.email-req-note { font-size:0.78rem; color:var(--muted); background:var(--warning-light); border-radius:var(--radius-sm); padding:0.4rem 0.7rem; margin-top:0.4rem; }
+.email-req-status { padding:0.2rem 0.6rem; border-radius:10px; font-size:0.72rem; font-weight:700; }
+.email-req-status.pending { background:var(--warning-light); color:var(--warning); }
+.email-req-status.in_progress { background:var(--info-light); color:var(--info); }
+.email-req-status.resolved { background:var(--success-light); color:var(--success); }
