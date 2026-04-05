@@ -294,8 +294,10 @@ RULES: Return ONLY the index number. If no match, return -1. No other text.`;
 
     const basePrompt = `You are an expert customer support AI for ${WIDGET_CONFIG.storeName} (A Shopify Store).
 
-LANGUAGE RULE:
-- ALWAYS match the user's exact language. If they message purely in English, reply in English. If Roman Urdu, Roman Urdu.
+LANGUAGE RULE (CRITICAL STATUS):
+- You MUST answer in the EXACT same language as the user's latest message.
+- IF user types purely in English, you MUST answer ONLY in English. Do not mix languages.
+- IF user types in Roman Urdu (e.g. 'kya', 'batao', 'chahiye'), you MUST answer ONLY in Roman Urdu.
 
 FORMATTING RULE:
 - Format your answer clearly using bullet points (•) or numbering.

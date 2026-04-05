@@ -191,11 +191,11 @@ Card Name: "${name}"
 Content: "${content.substring(0, 500)}"
 
 Rules:
-- Include variations (English + Roman Urdu if relevant)
-- Include common misspellings/alternate phrasings
+- MUST be ONLY in English. Do not use any Roman Urdu or other languages.
+- Include variations and common English misspellings/alternate phrasings
 - Short phrases only (1-3 words each)
 - Return ONLY a comma-separated list, nothing else
-Example: shipping, delivery, order time, kab aayega, dispatch, tracking`;
+Example: shipping, delivery, order time, dispatch, tracking`;
 
     let result = '';
     if (model.startsWith('gemini')) {
