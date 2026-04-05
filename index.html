@@ -1151,6 +1151,7 @@ tr:last-child td { border-bottom:none; }
               </div>
               <div class="cs-chat-header-actions">
                 <button class="cs-icon-btn" id="csAiDraftBtn" onclick="generateAIDraft()" title="AI Draft"><i data-lucide="sparkles" width="13" height="13"></i></button>
+                <button class="cs-icon-btn" onclick="summarizeChat()" title="Summarize Chat"><i data-lucide="file-text" width="13" height="13"></i></button>
                 <button class="cs-icon-btn" onclick="openChatSearch()" title="Search"><i data-lucide="search" width="13" height="13"></i></button>
                 <button class="cs-icon-btn" onclick="togglePinChat(CS_SELECTED_SESSION)" title="Pin"><i data-lucide="pin" width="13" height="13"></i></button>
                 <button class="cs-icon-btn" onclick="showChatHistoryTimeline(CS_SELECTED_SESSION)" title="History"><i data-lucide="clock" width="13" height="13"></i></button>
@@ -1193,6 +1194,7 @@ tr:last-child td { border-bottom:none; }
               <div class="cs-human-reply-row">
                 <div class="cs-reply-tools">
                   <button class="cs-reply-tool-btn" id="csTranslateBtn" onclick="translateReply()"><i data-lucide="languages" width="11" height="11"></i> Translate</button>
+                  <button class="cs-reply-tool-btn" id="csRewriteBtn" onclick="aiRewriteReply()"><i data-lucide="sparkles" width="11" height="11"></i> AI Rewrite</button>
                   <button class="cs-reply-tool-btn" onclick="toggleCannedPanel()"><i data-lucide="zap" width="11" height="11"></i> Quick Replies</button>
                   <button class="cs-reply-tool-btn" onclick="addInternalNote()"><i data-lucide="sticky-note" width="11" height="11"></i> Add Note</button>
                 </div>
@@ -3723,9 +3725,5 @@ function confirmClearData() { /* overridden by working.js */ }
 <script src="knowledge-base.js"></script>
 <script src="support-advanced.js"></script>
 <script>startLiveClock();</script>
-
-<link rel="stylesheet" href="https://ahmadali0091257.github.io/Free-Developer-Utility-Tools/support-widget.css">
-<script src="https://ahmadali0091257.github.io/Free-Developer-Utility-Tools/support-widget.js"></script>
-  
 </body>
 </html>

@@ -1297,3 +1297,144 @@ function csHumanInputKeydown(e) {
     }
   }
 }
+
+// ── AI Rewrite Reply ──────────────────────────────────────────
+async function aiRewriteReply() {
+  const inp = document.getElementById('csHumanReplyInp');
+  const text = inp?.value.trim();
+  if (!text) return toast('Pehle reply likho jise rewrite karna ho', 'warning');
+  
+  const originalText = inp.value;
+  inp.value = '⏳ AI is rewriting...';
+  inp.disabled = true;
+
+  try {
+    const key = CS_SUPPORT_CONFIG.api_key || '';
+    const model = CS_SUPPORT_CONFIG.model || 'gemini-1.5-flash';
+    if (!key) throw new Error("API key missing. Add it in settings.");
+    
+    // Check if the chat has language memory
+    let userLang = 'English';
+    const chat = CS_CHATS.find(c => c.session_id === CS_SELECTED_SESSION);
+    if(chat && chat.ai_memory && chat.ai_memory.language) {
+      userLang = chat.ai_memory.language;
+    }
+
+    const instruction = `Rewrite this customer support reply to make it highly professional, polite, empathetic, and clear. 
+Use bullet points (•) if there are multiple parts to the answer.
+Highlight keywords in **bold**.
+
+CRITICAL LANGUAGE RULE: 
+Ensure the final reply is strictly written in ${userLang}. (e.g. if ${userLang} is Roman Urdu, use purely Roman Urdu. If it is English, use English).
+
+Original Draft:
+"${text}"
+
+ONLY RETURN THE REWRITTEN TEXT AND NOTHING ELSE.`;
+    
+    let result = '';
+    if (model.startsWith('gemini')) {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: instruction }] }],
+          generationConfig: { temperature: 0.4 }
+        })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      result = data.candidates[0].content.parts[0].text;
+    } else {
+      const res = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        body: JSON.stringify({ model, messages: [{ role: 'user', content: instruction }], temperature: 0.4 })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      result = data.choices[0].message.content;
+    }
+
+    inp.value = result.trim();
+    toast('✨ Reply rewritten!', 'success');
+  } catch(e) {
+    inp.value = originalText;
+    toast('Rewrite failed: ' + e.message, 'error');
+  } finally {
+    inp.disabled = false;
+    inp.focus();
+    inp.style.height = 'auto';
+    inp.style.height = Math.min(inp.scrollHeight, 100) + 'px';
+  }
+}
+
+// ── Summarize Long Chats (>5hrs) ──────────────────────────────
+async function summarizeChat() {
+  if (!CS_SELECTED_SESSION) return toast('Select a chat to summarize', 'warning');
+  const chat = CS_CHATS.find(c => c.session_id === CS_SELECTED_SESSION);
+  if (!chat || !chat.messages || !chat.messages.length) return toast('Chat empty', 'warning');
+
+  const key = CS_SUPPORT_CONFIG.api_key || '';
+  const model = CS_SUPPORT_CONFIG.model || 'gemini-1.5-flash';
+  if (!key) return toast('API key missing. Add it in settings.', 'warning');
+  
+  const msgsText = chat.messages.map(m => `${m.role === 'user' ? 'Visitor' : 'Support'}: ${m.content}`).join('\n');
+  const instruction = `Summarize this customer support chat in max 4 short bullet points. Mention:
+1. What was the customer's main problem or question?
+2. Did the AI/Agent resolve it? Which KB Card or logic was used?
+3. Customer's mood/sentiment (e.g., normal, frustrated, happy).
+4. Any pending action needed from human admin.
+
+CHAT LOG:
+${msgsText.substring(msgsText.length - 8000)} // Only pass last 8k chars
+
+Return ONLY the bulleted summary.`;
+  
+  toast('⏳ Summarizing chat...', 'info');
+
+  try {
+    let result = '';
+    if (model.startsWith('gemini')) {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: instruction }] }],
+          generationConfig: { temperature: 0.3 }
+        })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      result = data.candidates[0].content.parts[0].text;
+    } else {
+      const res = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        body: JSON.stringify({ model, messages: [{ role: 'user', content: instruction }], temperature: 0.3 })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      result = data.choices[0].message.content;
+    }
+
+    // Append summary as a system notification bubble in the UI
+    const container = document.getElementById('csChatMessages');
+    const noteEl = document.createElement('div');
+    noteEl.className = 'cs-msg-row';
+    noteEl.innerHTML = `
+      <div style="background:rgba(139, 92, 246, 0.1); border:1px solid rgba(139,92,246,0.3); padding:1rem; border-radius:8px; color:var(--text); font-size:0.85rem; width:100%; margin:1rem 0;">
+        <strong style="color:#8b5cf6;"><i data-lucide="sparkles" width="14" height="14"></i> AI Chat Summary</strong><br><br>
+        ${result.replace(/\n/g, '<br>')}
+      </div>`;
+    container.appendChild(noteEl);
+    container.scrollTop = container.scrollHeight;
+    
+    // Automatically re-initialize lucide icons inside the new container if lucide is available
+    if (typeof lucide !== 'undefined') lucide.createIcons({root: noteEl});
+    
+    toast('Summary generated!', 'success');
+  } catch(e) {
+    toast('Summarize failed: ' + e.message, 'error');
+  }
+}
