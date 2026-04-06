@@ -1,6 +1,13 @@
 /* ══════════════════════════════════════════════════════════════
-   animation.css — Aezoon Dashboard Global Animations
+   animation.css — Aezoon Premium Motion System
    ══════════════════════════════════════════════════════════════ */
+
+:root {
+  --motion-fast: 180ms;
+  --motion-base: 260ms;
+  --motion-slow: 420ms;
+  --motion-curve: cubic-bezier(0.22, 1, 0.36, 1);
+}
 
 /* ── PAGE TRANSITIONS ── */
 @keyframes fadeInUp {
@@ -16,53 +23,53 @@
   to   { opacity: 1; }
 }
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.94); }
+  from { opacity: 0; transform: scale(0.95); }
   to   { opacity: 1; transform: scale(1); }
 }
 @keyframes slideInRight {
-  from { opacity: 0; transform: translateX(24px); }
+  from { opacity: 0; transform: translateX(20px); }
   to   { opacity: 1; transform: translateX(0); }
 }
 @keyframes slideInLeft {
-  from { opacity: 0; transform: translateX(-24px); }
+  from { opacity: 0; transform: translateX(-20px); }
   to   { opacity: 1; transform: translateX(0); }
 }
 
 /* ── UTILITY ANIMATION CLASSES ── */
-.anim-fade-up   { animation: fadeInUp 0.28s cubic-bezier(0.22,1,0.36,1) both; }
-.anim-fade-down { animation: fadeInDown 0.25s ease both; }
-.anim-fade      { animation: fadeIn 0.2s ease both; }
-.anim-scale     { animation: scaleIn 0.22s cubic-bezier(0.22,1,0.36,1) both; }
-.anim-slide-r   { animation: slideInRight 0.25s ease both; }
-.anim-slide-l   { animation: slideInLeft 0.25s ease both; }
+.anim-fade-up   { animation: fadeInUp var(--motion-base) var(--motion-curve) both; }
+.anim-fade-down { animation: fadeInDown 220ms ease both; }
+.anim-fade      { animation: fadeIn var(--motion-fast) ease both; }
+.anim-scale     { animation: scaleIn 220ms var(--motion-curve) both; }
+.anim-slide-r   { animation: slideInRight 240ms var(--motion-curve) both; }
+.anim-slide-l   { animation: slideInLeft 240ms var(--motion-curve) both; }
 
 /* Stagger delays */
-.anim-d1 { animation-delay: 0.05s; }
-.anim-d2 { animation-delay: 0.10s; }
-.anim-d3 { animation-delay: 0.15s; }
-.anim-d4 { animation-delay: 0.20s; }
-.anim-d5 { animation-delay: 0.25s; }
+.anim-d1 { animation-delay: 40ms; }
+.anim-d2 { animation-delay: 80ms; }
+.anim-d3 { animation-delay: 120ms; }
+.anim-d4 { animation-delay: 160ms; }
+.anim-d5 { animation-delay: 200ms; }
 
 /* ── PULSE / GLOW ── */
 @keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.4); }
-  50%       { box-shadow: 0 0 0 8px rgba(99,102,241,0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(127,140,255,0.4); }
+  50%       { box-shadow: 0 0 0 9px rgba(127,140,255,0); }
 }
 @keyframes pulseGreen {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
-  50%       { box-shadow: 0 0 0 8px rgba(16,185,129,0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(47,213,163,0.38); }
+  50%       { box-shadow: 0 0 0 9px rgba(47,213,163,0); }
 }
-.anim-pulse-glow  { animation: pulseGlow 2s infinite; }
-.anim-pulse-green { animation: pulseGreen 2s infinite; }
+.anim-pulse-glow  { animation: pulseGlow 2.2s infinite; }
+.anim-pulse-green { animation: pulseGreen 2.2s infinite; }
 
 /* ── BOUNCE ── */
 @keyframes bounceIn {
-  0%   { transform: scale(0.3); opacity: 0; }
-  50%  { transform: scale(1.08); opacity: 1; }
-  70%  { transform: scale(0.96); }
+  0%   { transform: scale(0.36); opacity: 0; }
+  48%  { transform: scale(1.07); opacity: 1; }
+  72%  { transform: scale(0.97); }
   100% { transform: scale(1); }
 }
-.anim-bounce { animation: bounceIn 0.45s cubic-bezier(0.22,1,0.36,1) both; }
+.anim-bounce { animation: bounceIn 460ms var(--motion-curve) both; }
 
 /* ── SHAKE (for errors) ── */
 @keyframes shake {
@@ -72,23 +79,23 @@
   60%     { transform: translateX(-4px); }
   80%     { transform: translateX(4px); }
 }
-.anim-shake { animation: shake 0.4s ease; }
+.anim-shake { animation: shake 380ms ease; }
 
 /* ── SPIN ── */
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
-.anim-spin { animation: spin 0.8s linear infinite; }
+.anim-spin { animation: spin 820ms linear infinite; }
 
 /* ── SKELETON LOADING ── */
 @keyframes shimmer {
-  0%   { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
+  0%   { background-position: -420px 0; }
+  100% { background-position: 420px 0; }
 }
 .skeleton {
-  background: linear-gradient(90deg, var(--surface2) 25%, var(--surface3) 50%, var(--surface2) 75%);
-  background-size: 800px 100%;
-  animation: shimmer 1.4s infinite linear;
+  background: linear-gradient(90deg, var(--surface2) 24%, var(--surface3) 50%, var(--surface2) 76%);
+  background-size: 840px 100%;
+  animation: shimmer 1.5s linear infinite;
   border-radius: var(--radius-sm);
 }
 
@@ -97,7 +104,7 @@
   0%, 100% { transform: translateY(0); }
   50%       { transform: translateY(-5px); }
 }
-.anim-float { animation: float 3s ease-in-out infinite; }
+.anim-float { animation: float 3.2s ease-in-out infinite; }
 
 /* ══════════════════════════════════════════════════════════════
    WIDGET CHAT ANIMATIONS
@@ -106,46 +113,42 @@
 /* Widget button entrance */
 @keyframes widgetEntrance {
   0%   { transform: scale(0) rotate(-180deg); opacity: 0; }
-  60%  { transform: scale(1.15) rotate(8deg); opacity: 1; }
-  80%  { transform: scale(0.95) rotate(-3deg); }
+  58%  { transform: scale(1.13) rotate(7deg); opacity: 1; }
+  82%  { transform: scale(0.96) rotate(-2deg); }
   100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }
-.widget-entrance { animation: widgetEntrance 0.6s cubic-bezier(0.22,1,0.36,1) both; }
+.widget-entrance { animation: widgetEntrance 0.62s var(--motion-curve) both; }
 
 /* Widget button pulse ring */
 @keyframes widgetRing {
-  0%   { transform: scale(1); opacity: 0.6; }
-  100% { transform: scale(1.8); opacity: 0; }
+  0%   { transform: scale(1); opacity: 0.62; }
+  100% { transform: scale(1.78); opacity: 0; }
 }
 .widget-ring {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  border: 2px solid #0ea5e9;
-  animation: widgetRing 2s ease-out infinite;
+  border: 2px solid #51b8ff;
+  animation: widgetRing 2.1s ease-out infinite;
   pointer-events: none;
 }
 .widget-ring-2 {
-  animation-delay: 0.7s;
+  animation-delay: 0.75s;
 }
 
 /* Chat box open animation */
 @keyframes chatBoxOpen {
-  0%   { opacity: 0; transform: translateY(20px) scale(0.95); transform-origin: bottom right; }
+  0%   { opacity: 0; transform: translateY(18px) scale(0.95); transform-origin: bottom right; }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 @keyframes chatBoxClose {
   0%   { opacity: 1; transform: translateY(0) scale(1); }
-  100% { opacity: 0; transform: translateY(16px) scale(0.95); }
+  100% { opacity: 0; transform: translateY(14px) scale(0.96); }
 }
-.chat-box-opening { animation: chatBoxOpen 0.3s cubic-bezier(0.22,1,0.36,1) both; }
+.chat-box-opening { animation: chatBoxOpen 0.32s var(--motion-curve) both; }
 .chat-box-closing { animation: chatBoxClose 0.2s ease both; }
 
 /* Message bubble entrance */
-@keyframes bubbleIn {
-  0%   { opacity: 0; transform: translateY(8px) scale(0.96); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
-}
 @keyframes bubbleInUser {
   0%   { opacity: 0; transform: translateX(12px) scale(0.96); }
   100% { opacity: 1; transform: translateX(0) scale(1); }
@@ -154,12 +157,12 @@
   0%   { opacity: 0; transform: translateX(-12px) scale(0.96); }
   100% { opacity: 1; transform: translateX(0) scale(1); }
 }
-.bubble-in-user { animation: bubbleInUser 0.22s cubic-bezier(0.22,1,0.36,1) both; }
-.bubble-in-bot  { animation: bubbleInBot  0.22s cubic-bezier(0.22,1,0.36,1) both; }
+.bubble-in-user { animation: bubbleInUser 0.24s var(--motion-curve) both; }
+.bubble-in-bot  { animation: bubbleInBot  0.24s var(--motion-curve) both; }
 
 /* Typing dots */
 @keyframes typingDot {
-  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.42; }
   30%            { transform: translateY(-6px); opacity: 1; }
 }
 
@@ -169,14 +172,14 @@
   40%  { transform: scale(0.88); }
   100% { transform: scale(1); }
 }
-.send-pop { animation: sendPop 0.2s ease; }
+.send-pop { animation: sendPop 0.22s ease; }
 
 /* Header online dot pulse */
 @keyframes onlinePulse {
   0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.5; transform: scale(1.3); }
+  50%       { opacity: 0.5; transform: scale(1.32); }
 }
-.online-pulse { animation: onlinePulse 2s ease-in-out infinite; }
+.online-pulse { animation: onlinePulse 2.1s ease-in-out infinite; }
 
 /* Unread badge pop */
 @keyframes badgePop {
@@ -184,15 +187,15 @@
   60%  { transform: scale(1.3); }
   100% { transform: scale(1); }
 }
-.badge-pop { animation: badgePop 0.35s cubic-bezier(0.22,1,0.36,1) both; }
+.badge-pop { animation: badgePop 0.35s var(--motion-curve) both; }
 
 /* ── DASHBOARD CARD HOVER ── */
 .card-hover-lift {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.22s var(--motion-curve), box-shadow 0.22s var(--motion-curve);
 }
 .card-hover-lift:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  transform: translateY(-4px);
+  box-shadow: 0 14px 30px rgba(5, 10, 24, 0.3);
 }
 
 /* ── NUMBER COUNT UP ── */
@@ -200,4 +203,13 @@
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.anim-count { animation: countUp 0.4s ease both; }
+.anim-count { animation: countUp 0.45s ease both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}

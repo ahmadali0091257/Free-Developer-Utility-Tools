@@ -501,6 +501,219 @@ tr:last-child td { border-bottom:none; }
 @media(max-width:400px){
   .stats-grid { grid-template-columns: 1fr; }
 }
+/* ── PREMIUM REMAKE OVERRIDES ── */
+:root {
+  --bg: #070b18;
+  --surface: #121a2b;
+  --surface2: #1a263d;
+  --surface3: #253758;
+  --border: rgba(141, 165, 206, 0.24);
+  --text: #edf3ff;
+  --muted: #9baecc;
+  --primary: #7f8cff;
+  --primary-hover: #98a2ff;
+  --primary-light: rgba(127, 140, 255, 0.18);
+  --success: #2fd5a3;
+  --success-light: rgba(47, 213, 163, 0.16);
+  --warning: #f7bb53;
+  --warning-light: rgba(247, 187, 83, 0.16);
+  --danger: #ff708c;
+  --danger-light: rgba(255, 112, 140, 0.16);
+  --info: #51b8ff;
+  --info-light: rgba(81, 184, 255, 0.16);
+  --radius: 14px;
+  --radius-sm: 10px;
+  --shadow: 0 18px 48px rgba(4, 8, 20, 0.45);
+  --shadow-sm: 0 10px 24px rgba(7, 11, 24, 0.34);
+}
+[data-theme="light"] {
+  --bg: #eef3ff;
+  --surface: #ffffff;
+  --surface2: #f3f7ff;
+  --surface3: #e5ecfb;
+  --border: rgba(86, 109, 160, 0.2);
+  --text: #18233a;
+  --muted: #61759b;
+  --primary: #5f71f8;
+  --primary-hover: #4c60ee;
+  --primary-light: rgba(95, 113, 248, 0.14);
+  --success: #0ea874;
+  --warning: #d89026;
+  --danger: #de3f65;
+  --info: #1d8cdb;
+  --shadow: 0 14px 34px rgba(49, 67, 111, 0.14);
+  --shadow-sm: 0 8px 20px rgba(58, 77, 119, 0.1);
+}
+
+body {
+  background:
+    radial-gradient(circle at 12% -8%, rgba(127, 140, 255, 0.24), transparent 34%),
+    radial-gradient(circle at 86% 0%, rgba(81, 184, 255, 0.2), transparent 30%),
+    var(--bg);
+}
+
+.sidebar,
+.topbar,
+.card,
+.stat-card,
+.pending-card,
+.notes-widget,
+.settings-card,
+.wow-card,
+.clock-widget,
+.search-results-drop,
+.cmd-box,
+.modal,
+#toast,
+#undoToast {
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.sidebar {
+  background: linear-gradient(180deg, rgba(127, 140, 255, 0.12), rgba(127, 140, 255, 0) 20%), var(--surface);
+}
+.topbar {
+  background: linear-gradient(180deg, rgba(127, 140, 255, 0.1), rgba(127, 140, 255, 0) 55%), var(--surface);
+  backdrop-filter: blur(8px);
+}
+
+.nav-item,
+.btn,
+.inp,
+.task-card,
+.pending-card,
+.search-result-item,
+.cmd-item {
+  transition: all 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nav-item:hover {
+  border-color: rgba(127, 140, 255, 0.36);
+  transform: translateX(2px);
+}
+.nav-item.active {
+  background: linear-gradient(135deg, rgba(127, 140, 255, 0.22), rgba(81, 184, 255, 0.1));
+  box-shadow: inset 0 0 0 1px rgba(127, 140, 255, 0.3);
+}
+
+.card,
+.stat-card,
+.pending-card,
+.notes-widget,
+.settings-card,
+.wow-card,
+.clock-widget {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0)), var(--surface);
+}
+
+.stat-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(127, 140, 255, 0.14), transparent 40%);
+  pointer-events: none;
+  opacity: 0.65;
+}
+
+.btn {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), #5ebdff);
+  color: #fff;
+}
+.btn-primary:hover {
+  background: linear-gradient(135deg, var(--primary-hover), #46a9f1);
+  box-shadow: 0 10px 22px rgba(76, 96, 238, 0.34);
+}
+.btn-outline {
+  background: rgba(255, 255, 255, 0.02);
+}
+.btn-outline:hover {
+  background: var(--primary-light);
+}
+
+.inp,
+.global-search-inp,
+.cmd-input,
+.date-filter input[type=date],
+.task-filters select,
+.note-add-row input {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)), var(--surface2);
+  border-color: var(--border);
+}
+.inp:focus,
+.global-search-inp:focus,
+.cmd-input:focus {
+  border-color: rgba(127, 140, 255, 0.65);
+  box-shadow: 0 0 0 3px rgba(127, 140, 255, 0.18);
+}
+
+.table-wrap {
+  border-radius: var(--radius-sm);
+}
+th {
+  background: linear-gradient(180deg, rgba(127, 140, 255, 0.14), rgba(127, 140, 255, 0.02)), var(--surface2);
+}
+tr:hover td {
+  background: rgba(127, 140, 255, 0.12);
+}
+
+.badge,
+.cust-tag,
+.clv-badge,
+.task-status-badge,
+.nav-count-badge,
+.cs-unread-badge,
+#supportNavBadge,
+#emailReqNavBadge,
+#aiTeamNavBadge {
+  box-shadow: 0 6px 14px rgba(10, 16, 34, 0.22);
+}
+
+.modal-bg {
+  backdrop-filter: blur(6px);
+  background: rgba(5, 9, 20, 0.62);
+}
+.modal {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0)), var(--surface);
+}
+.modal-header,
+.form-actions {
+  border-color: var(--border);
+}
+
+.search-results-drop,
+.cmd-box {
+  background: linear-gradient(180deg, rgba(127, 140, 255, 0.08), rgba(127, 140, 255, 0)), var(--surface);
+}
+.search-result-item:hover,
+.search-result-item.selected,
+.cmd-item:hover,
+.cmd-item.active {
+  background: linear-gradient(135deg, rgba(127, 140, 255, 0.24), rgba(81, 184, 255, 0.12));
+}
+
+#toast,
+#undoToast {
+  backdrop-filter: blur(8px);
+}
+
+.sync-badge,
+.multitab-badge,
+.presence-chip {
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 900px) {
+  .sidebar {
+    box-shadow: var(--shadow);
+  }
+}
+
 </style>
 </head>
 <body>
@@ -1151,7 +1364,6 @@ tr:last-child td { border-bottom:none; }
               </div>
               <div class="cs-chat-header-actions">
                 <button class="cs-icon-btn" id="csAiDraftBtn" onclick="generateAIDraft()" title="AI Draft"><i data-lucide="sparkles" width="13" height="13"></i></button>
-                <button class="cs-icon-btn" onclick="summarizeChat()" title="Summarize Chat"><i data-lucide="file-text" width="13" height="13"></i></button>
                 <button class="cs-icon-btn" onclick="openChatSearch()" title="Search"><i data-lucide="search" width="13" height="13"></i></button>
                 <button class="cs-icon-btn" onclick="togglePinChat(CS_SELECTED_SESSION)" title="Pin"><i data-lucide="pin" width="13" height="13"></i></button>
                 <button class="cs-icon-btn" onclick="showChatHistoryTimeline(CS_SELECTED_SESSION)" title="History"><i data-lucide="clock" width="13" height="13"></i></button>
@@ -1194,7 +1406,6 @@ tr:last-child td { border-bottom:none; }
               <div class="cs-human-reply-row">
                 <div class="cs-reply-tools">
                   <button class="cs-reply-tool-btn" id="csTranslateBtn" onclick="translateReply()"><i data-lucide="languages" width="11" height="11"></i> Translate</button>
-                  <button class="cs-reply-tool-btn" id="csRewriteBtn" onclick="aiRewriteReply()"><i data-lucide="sparkles" width="11" height="11"></i> AI Rewrite</button>
                   <button class="cs-reply-tool-btn" onclick="toggleCannedPanel()"><i data-lucide="zap" width="11" height="11"></i> Quick Replies</button>
                   <button class="cs-reply-tool-btn" onclick="addInternalNote()"><i data-lucide="sticky-note" width="11" height="11"></i> Add Note</button>
                 </div>

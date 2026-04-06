@@ -766,3 +766,213 @@
   .ai-bubble { max-width: 85%; }
   .ai-messages { padding: 12px 16px; }
 }
+
+/* ── PREMIUM REMAKE OVERRIDES ── */
+.ai-team-shell,
+.ai-sidebar,
+.ai-sidebar-header,
+.ai-search-bar,
+.ai-search-inner,
+.ai-archived-row,
+.ai-contact,
+.ai-chat-header,
+.ai-input-area,
+.ai-input-box,
+.ai-bubble,
+.ai-file-bubble,
+.ai-photo-bubble,
+.ai-typing-dots,
+.ai-date-sep span,
+.ai-reaction-pill,
+.ai-settings-panel,
+.ai-config-card,
+.ai-config-card-header,
+.ai-config-card-body,
+.ai-cfg-inp {
+  border-color: var(--border);
+}
+
+.ai-team-shell,
+.ai-sidebar,
+.ai-chat-header,
+.ai-input-area,
+.ai-settings-panel,
+.ai-config-card,
+.ai-config-card-header,
+.ai-config-card-body,
+.ai-search-inner,
+.ai-input-box,
+.ai-date-sep span,
+.ai-reaction-pill {
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0)), var(--surface);
+  box-shadow: var(--shadow-sm, var(--shadow));
+}
+
+.ai-team-shell {
+  border-radius: var(--radius);
+  overflow: hidden;
+  color: var(--text);
+}
+
+.ai-sidebar,
+.ai-chat-area {
+  backdrop-filter: blur(8px);
+}
+
+.ai-sidebar-header,
+.ai-search-bar,
+.ai-chat-header,
+.ai-input-area,
+.ai-config-card-body {
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)), var(--surface2);
+}
+
+.ai-chat-area {
+  background:
+    radial-gradient(circle at 12% -12%, rgba(127,140,255,0.15), transparent 34%),
+    radial-gradient(circle at 88% 8%, rgba(81,184,255,0.12), transparent 30%),
+    var(--bg);
+}
+
+.ai-chat-area::before {
+  background-image: radial-gradient(rgba(127,140,255,0.14) 1px, transparent 1px);
+  background-size: 26px 26px;
+  opacity: 0.28;
+}
+
+.ai-sidebar-title,
+.ai-contact-name,
+.ai-chat-header-name,
+.ai-file-name,
+.ai-settings-header h3,
+.ai-config-card-name {
+  color: var(--text);
+}
+
+.ai-settings-btn,
+.ai-header-icon-btn,
+.ai-input-icon-btn,
+.ai-settings-close {
+  color: var(--muted);
+}
+
+.ai-contact,
+.ai-archived-row,
+.ai-header-icon-btn,
+.ai-input-icon-btn,
+.ai-settings-btn,
+.ai-cfg-save,
+.ai-send-btn,
+.ai-file-action-btn,
+.ai-contact.active,
+.ai-search-inner,
+.ai-input-box,
+.ai-cfg-inp,
+.ai-cfg-save,
+.ai-settings-panel {
+  transition: all 0.24s cubic-bezier(0.22,1,0.36,1);
+}
+
+.ai-contact:hover,
+.ai-archived-row:hover {
+  background: linear-gradient(135deg, rgba(127,140,255,0.14), rgba(81,184,255,0.07));
+}
+
+.ai-contact.active {
+  background: linear-gradient(135deg, rgba(127,140,255,0.2), rgba(81,184,255,0.1));
+}
+
+.ai-search-inner,
+.ai-input-box,
+.ai-cfg-inp {
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)), var(--surface2);
+  color: var(--text);
+}
+
+.ai-search-inner input,
+.ai-input-box,
+.ai-cfg-inp {
+  color: var(--text);
+}
+
+.ai-search-inner input::placeholder,
+.ai-input-box::placeholder,
+.ai-cfg-label,
+.ai-contact-preview,
+.ai-contact-time,
+.ai-chat-header-status,
+.ai-file-size,
+.ai-settings-close,
+.ai-empty-state,
+.ai-date-sep span,
+.ai-bubble-time {
+  color: var(--muted);
+}
+
+.ai-search-inner:focus-within,
+.ai-input-box:focus,
+.ai-cfg-inp:focus {
+  border-color: rgba(127,140,255,0.56);
+  box-shadow: 0 0 0 3px rgba(127,140,255,0.16);
+}
+
+.ai-bubble {
+  border: 1px solid transparent;
+  box-shadow: 0 8px 18px rgba(5,10,24,0.18);
+}
+
+.ai-bubble.user,
+.ai-file-bubble {
+  background: linear-gradient(135deg, var(--primary), #51b8ff);
+  color: #fff;
+}
+
+.ai-bubble.bot,
+.ai-photo-bubble,
+.ai-typing-dots {
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0)), var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.ai-file-actions,
+.ai-file-action-divider {
+  border-color: rgba(255,255,255,0.22);
+}
+
+.ai-file-action-btn {
+  color: #fff;
+}
+
+.ai-file-action-btn:hover {
+  background: rgba(255,255,255,0.14);
+}
+
+.ai-photo-caption {
+  color: var(--text);
+}
+
+.ai-send-btn,
+.ai-cfg-save {
+  background: linear-gradient(135deg, var(--primary), #51b8ff);
+}
+
+.ai-send-btn:hover,
+.ai-cfg-save:hover {
+  background: linear-gradient(135deg, var(--primary-hover, var(--primary)), #3ea8f6);
+  box-shadow: 0 10px 20px rgba(76,96,238,0.34);
+}
+
+.ai-unread-badge,
+.ai-archived-count {
+  background: linear-gradient(135deg, var(--primary), #51b8ff);
+  box-shadow: 0 8px 20px rgba(13,20,40,0.2);
+}
+
+.ai-avatar {
+  box-shadow: 0 8px 20px rgba(13,20,40,0.2);
+}
+
+.ai-settings-panel {
+  border-radius: var(--radius);
+}

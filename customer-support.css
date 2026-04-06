@@ -1558,3 +1558,175 @@
   text-align: center;
 }
 
+/* ── PREMIUM REMAKE OVERRIDES ── */
+.cs-shell,
+.cs-sidebar,
+.cs-right,
+.cs-chat-header,
+.cs-tag-bar,
+.cs-tabs,
+.cs-modal,
+.cs-settings-section,
+.cs-guide-step,
+.cs-prompt-preview-card,
+.email-req-card,
+.cs-search-wrap,
+.cs-icon-btn,
+.cs-tag-btn,
+.cs-reply-tool-btn,
+.cs-human-reply-inp,
+.cs-upload-btn,
+.cs-prompt-input-area textarea,
+.cs-visitor-notes,
+.cs-canned-item,
+.cs-canned-add,
+.cs-canned-header {
+  border-color: var(--border);
+}
+
+.cs-shell,
+.cs-sidebar,
+.cs-right,
+.cs-chat-header,
+.cs-tag-bar,
+.cs-tabs,
+.cs-modal,
+.cs-settings-section,
+.cs-guide-step,
+.cs-prompt-preview-card,
+.email-req-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0)), var(--surface);
+  box-shadow: var(--shadow-sm, var(--shadow));
+}
+
+.cs-shell {
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.cs-sidebar,
+.cs-right {
+  backdrop-filter: blur(8px);
+}
+
+.cs-chat-item,
+.cs-tab-btn,
+.cs-icon-btn,
+.cs-tag-btn,
+.cs-reply-tool-btn,
+.cs-upload-btn,
+.cs-canned-item,
+.cs-prompt-preview-card,
+.email-req-card,
+.cs-guide-step,
+.cs-settings-section {
+  transition: all 0.24s cubic-bezier(0.22,1,0.36,1);
+}
+
+.cs-chat-item {
+  border-bottom-color: rgba(127,140,255,0.14);
+}
+.cs-chat-item:hover {
+  background: linear-gradient(135deg, rgba(127,140,255,0.12), rgba(81,184,255,0.06));
+  transform: translateX(2px);
+}
+.cs-chat-item.active {
+  background: linear-gradient(135deg, rgba(127,140,255,0.2), rgba(81,184,255,0.1));
+  border-left-color: var(--primary);
+}
+
+.cs-tab-btn:hover {
+  background: rgba(127,140,255,0.12);
+}
+.cs-tab-btn.active {
+  background: linear-gradient(180deg, rgba(127,140,255,0.16), rgba(127,140,255,0));
+  color: var(--primary);
+}
+
+.cs-mode-pill,
+.cs-icon-btn,
+.cs-tag-btn,
+.cs-reply-tool-btn,
+.cs-search-wrap,
+.cs-upload-btn,
+.cs-prompt-input-area textarea,
+.cs-human-reply-inp,
+.cs-canned-add,
+.cs-canned-item {
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)), var(--surface2);
+}
+
+.cs-icon-btn:hover,
+.cs-tag-btn:hover,
+.cs-reply-tool-btn:hover,
+.cs-upload-btn:hover,
+.cs-mode-pill:hover,
+.cs-search-wrap:focus-within,
+.cs-prompt-input-area textarea:focus,
+.cs-human-reply-inp:focus {
+  border-color: rgba(127,140,255,0.56);
+  box-shadow: 0 0 0 3px rgba(127,140,255,0.16);
+}
+
+.cs-chat-messages,
+.cs-prompt-messages {
+  background:
+    radial-gradient(circle at 12% -14%, rgba(127,140,255,0.14), transparent 34%),
+    radial-gradient(circle at 88% 6%, rgba(81,184,255,0.11), transparent 30%),
+    var(--bg);
+}
+
+.cs-bubble {
+  box-shadow: 0 8px 18px rgba(5,10,24,0.18);
+}
+.cs-bubble.user {
+  background: linear-gradient(135deg, var(--primary), #51b8ff);
+}
+.cs-bubble.bot {
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0)), var(--surface);
+}
+.cs-bubble.agent-bubble {
+  background: linear-gradient(135deg, rgba(47,213,163,0.2), rgba(81,184,255,0.07));
+  border-color: rgba(47,213,163,0.34);
+}
+
+.cs-chat-avatar,
+.cs-header-avatar,
+.cs-msg-avatar,
+.cs-visitor-avatar,
+.cvp-avatar,
+.cs-guide-num {
+  box-shadow: 0 8px 20px rgba(13,20,40,0.26);
+}
+
+.cs-human-send-btn {
+  background: linear-gradient(135deg, var(--success), #12b887);
+}
+.cs-human-send-btn:hover {
+  box-shadow: 0 10px 20px rgba(16,188,138,0.32);
+}
+
+.cs-prompt-preview-card:hover,
+.cs-guide-step:hover,
+.email-req-card:hover,
+.cs-settings-section:hover {
+  border-color: rgba(127,140,255,0.46);
+  box-shadow: var(--shadow, 0 18px 48px rgba(4,8,20,0.45));
+}
+
+.cs-alert-item {
+  backdrop-filter: blur(8px);
+}
+
+.cs-modal {
+  border-color: rgba(127,140,255,0.35);
+}
+
+.pn-modal,
+.pn-titlebar,
+.pn-toolbar,
+.pn-body,
+.pn-editor,
+.pn-line-nums {
+  border-color: rgba(141,165,206,0.24);
+}

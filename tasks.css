@@ -88,3 +88,100 @@
   .task-stats-grid { grid-template-columns: 1fr; }
   .task-actions-bottom { flex-direction: column-reverse; }
 }
+
+/* ── PREMIUM REMAKE OVERRIDES ── */
+.task-filters,
+.task-stat-card,
+.task-card,
+.task-detail-section,
+.task-step-item,
+.task-actions-bottom {
+  border-color: var(--border);
+}
+
+.task-filters,
+.task-stat-card,
+.task-card,
+.task-detail-section,
+.task-step-item {
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0)), var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.task-filters {
+  border-radius: var(--radius);
+  backdrop-filter: blur(8px);
+}
+
+.task-card {
+  transition: all 0.24s cubic-bezier(0.22,1,0.36,1);
+  position: relative;
+  overflow: hidden;
+}
+.task-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(127,140,255,0.14), transparent 44%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.24s ease;
+}
+.task-card:hover {
+  border-color: rgba(127,140,255,0.42);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow);
+}
+.task-card:hover::before { opacity: 0.9; }
+
+.task-person-badge {
+  background: linear-gradient(135deg, rgba(127,140,255,0.24), rgba(81,184,255,0.12));
+  border: 1px solid rgba(127,140,255,0.32);
+}
+.task-person-badge.ali {
+  background: linear-gradient(135deg, rgba(47,213,163,0.22), rgba(81,184,255,0.1));
+  border: 1px solid rgba(47,213,163,0.34);
+}
+
+.task-progress-bar {
+  background: var(--surface3);
+  border: 1px solid rgba(127,140,255,0.2);
+}
+.task-progress-fill {
+  background: linear-gradient(90deg, var(--primary), #51b8ff);
+  box-shadow: 0 0 10px rgba(127,140,255,0.3);
+}
+
+.task-step-dot.pending { background: var(--warning); }
+
+.task-status-badge {
+  border: 1px solid transparent;
+}
+.task-status-badge.completed { border-color: rgba(47,213,163,0.3); }
+.task-status-badge.pending { border-color: rgba(247,187,83,0.3); }
+.task-status-badge.in-progress { border-color: rgba(81,184,255,0.3); }
+
+.task-step-checkbox {
+  border-color: var(--border);
+  background: var(--surface2);
+}
+.task-step-checkbox:hover {
+  border-color: rgba(127,140,255,0.55);
+  box-shadow: 0 0 0 3px rgba(127,140,255,0.16);
+}
+
+.task-step-checkbox.checked {
+  background: linear-gradient(135deg, var(--success), #12b887);
+  border-color: transparent;
+}
+
+.task-complete-btn {
+  background: linear-gradient(135deg, var(--success), #10bc8a);
+}
+.task-complete-btn:hover {
+  box-shadow: 0 10px 20px rgba(16,188,138,0.32);
+}
+
+.task-delete-btn {
+  border: 1px solid rgba(255,112,140,0.32);
+}

@@ -181,16 +181,12 @@
     if (chatPollInterval) clearInterval(chatPollInterval);
     
     chatPollInterval = setInterval(async () => {
-      // SMART POLLING: Save Firebase reads significantly
-      if (!chatOpen) {
-        // Chat is closed -> Poll heavily reduced (skip 80% of polls)
-        if (Math.random() > 0.2) return; 
-      } else {
-        const idleTime = Date.now() - lastUserActivity;
-        if (idleTime > 600000) { // 10 mins idle
-          console.log('[Aezoon] Session idle, slowing down polling...');
-          if (Math.random() > 0.15) return; 
-        }
+      // SMART POLLING: If user is idle for > 10 mins, slow down polling to 60s
+      const idleTime = Date.now() - lastUserActivity;
+      if (idleTime > 600000) { // 10 mins
+        console.log('[Aezoon] Session idle, slowing down polling...');
+        // Temporary slow down: Skip this poll if 8s doesn't divide into 60s
+        if (Math.random() > 0.15) return; 
       }
 
       const data = await fbGet('support_chats', SESSION_ID);
@@ -231,58 +227,6 @@
     });
   }
 
-  // ── ROUTER AI: Let DeepSeek pick the best card (Precise search) ──
-  async function findCardDeepSeekAI(userMsg, cards) {
-    const key = AI_CONFIG.api_key_deepseek || '';
-    if (!key || !cards.length) return null;
-
-    // Skip router for simple greetings or short messages (but NOT for contact/email requests)
-    const cleanMsg = userMsg.toLowerCase().trim();
-    const isContactReq = /\b(email|contact|rabta|help|help me|support|connect)\b/i.test(cleanMsg);
-    
-    if (!isContactReq && cleanMsg.length < 15 && /^(hi|hello|hey|salam|test|ok|yes|no|thanks)$/i.test(cleanMsg)) {
-       return null;
-    }
-
-    // ADVANCED ROUTER AI: This AI acts as a search specialist.
-    // It reads user question + all card names/tags and identifies the SINGLE best source.
-    const cardList = cards.map((c, i) => `ID ${i}: [Name: ${c.name}] [Tags: ${c.keywords}]`).join('\n');
-    const systemPrompt = `You are a Search Specialist AI. Your job is to find the MOST RELEVANT Knowledge Base card for the user's question.
-
-USER QUESTION: "${userMsg}"
-
-AVAILABLE CARDS (ID, Name, Tags):
-${cardList}
-
-SCORING RULES:
-1. Look for matching keywords in Tags.
-2. Look for intent match in Card Name.
-3. If multiple cards match, pick the most specific one.
-4. If NO card matches at all, return -1.
-
-OUTPUT RULE:
-- Return ONLY the ID number (e.g., 0, 5, 12) or -1. No conversation.`;
-
-    try {
-      const res = await fetch('https://api.deepseek.com/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-        body: JSON.stringify({ 
-          model: AI_CONFIG.model_router || 'deepseek-chat', 
-          messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMsg }],
-          max_tokens: 5, temperature: 0.1 
-        })
-      });
-      const data = await res.json();
-      const matchIdx = parseInt(data.choices[0].message.content.trim());
-      if (!isNaN(matchIdx) && matchIdx >= 0 && cards[matchIdx]) {
-        console.log(`[Aezoon] Router AI picked: ${cards[matchIdx].name}`);
-        return [cards[matchIdx]];
-      }
-      return null;
-    } catch (e) { return null; }
-  }
-
   // ── AI Call ───────────────────────────────────────────────────
   async function callAI(userMsg) {
     const model = AI_CONFIG.model || 'gemini-1.5-flash';
@@ -290,68 +234,64 @@ OUTPUT RULE:
     if (!key) return 'Sorry, AI abhi available nahi hai. Please baad mein try karein.';
 
     // Build memory context
-    let shopifyInfo = '';
-    try {
-      if (typeof window !== 'undefined') {
-        const pageTitle = document.title || 'Unknown Page';
-        const pageUrl = window.location.href;
-        shopifyInfo = `\n- Current Page: ${pageTitle} (${pageUrl})`;
-        if (window.Shopify && window.Shopify.currency) {
-          shopifyInfo += `\n- Store Currency: ${window.Shopify.currency.active}`;
-        }
-      }
-    } catch(e) {}
-
     const memCtx = AI_MEMORY.name || AI_MEMORY.language || AI_MEMORY.topics.length
-      ? `\n\nVISITOR DATA:\n- Lang: ${AI_MEMORY.language || 'detecting'}\n- Mood: ${AI_MEMORY.sentiment || 'neutral'}${shopifyInfo}`
-      : `\n\nVISITOR DATA:${shopifyInfo}`;
+      ? `\n\nVISITOR MEMORY:\n- Name: ${AI_MEMORY.name || 'unknown'}\n- Language: ${AI_MEMORY.language || 'detecting'}\n- Mood: ${AI_MEMORY.sentiment || 'neutral'}\n- Topics discussed: ${AI_MEMORY.topics.slice(-5).join(', ') || 'none'}\n- Messages sent: ${AI_MEMORY.messageCount}`
+      : '';
 
-    const basePrompt = `You are an expert customer support AI for ${WIDGET_CONFIG.storeName} (A Shopify Store).
+    const basePrompt = `You are a highly intelligent, empathetic, and professional customer support AI for ${WIDGET_CONFIG.storeName}.
 
-LANGUAGE RULE (CRITICAL STATUS):
-- You MUST answer in the EXACT same language as the user's latest message.
-- IF user types purely in English, you MUST answer ONLY in English. Do not mix languages.
-- IF user types in Roman Urdu (e.g. 'kya', 'batao', 'chahiye'), you MUST answer ONLY in Roman Urdu.
+LANGUAGE RULE (STRICT):
+- Detect the user's language from their VERY FIRST message.
+- Always respond in the EXACT same language/script the user is using (Urdu, Roman Urdu, Arabic, English, etc.).
+- Never switch languages unless the user does.
+- Language consistency is professional; respect the user's choice of language.
 
-FORMATTING RULE:
-- Format your answer clearly using bullet points (•) or numbering.
-- Highlight keywords in **bold**.
+ANALYSIS & REASONING PROCESS:
+1. CUSTOMER QUERY: Carefully analyze the user's question, intent, and tone.
+2. MEMORY REVIEW: Check the "VISITOR MEMORY" below to remember their name, past topics, and mood.
+3. KB ANALYSIS: Review the "KNOWLEDGE BASE" specifically for facts, prices, and policies. If a KB card is provided, analyze it line-by-line to extract the exact answer.
+4. STRUCTURED RESPONSE: Draft an answer that is clear, bold, and easy to scan.
 
-ANSWER RULE:
-- Provide EXACTLY the answer to their question. Do NOT add extra unnecessary information.
-- If the Knowledge Base has the answer, extract only the relevant points.
-- If there is NO matching Knowledge Base data, DO NOT GUESS. Say: 'I am sorry, I do not have exactly this information. You can connect to a human agent.' (Or say this in the user's local language).
-- If payment/return logic fails, append [[HUMAN_NEEDED]].
-- If the user asks for email contact or you cannot find the info, explicitly ask them to fill the email form or click 'Connect to Agent'.`;
+FORMATTING RULES:
+- Use **bold** for key terms, store names, and important values.
+- Use bullet points (•) for multiple items or options.
+- Use numbered lists (1. 2. 3.) for step-by-step guides.
+- Keep answers concise and structured — max 4-6 lines. Avoid long "walls of text".
+
+ANSWER QUALITY:
+- If KB context is provided → Use it carefully and accurately. Do not invent details.
+- If no KB context matches → Provide a polite general answer based on store tone, and offer human help.
+- If the visitor is unhappy (Mood: angry) → Use extra empathy and soft language.
+- Always end with a helpful follow-up question (e.g., "Kuch aur poochna hai?" in their language).
+
+HUMAN ESCALATION:
+- If the issue is complex (payment failures, refund logic, technical bugs) → Append [[HUMAN_NEEDED]] at the very end of your response.`;
 
     const systemPrompt = (AI_CONFIG.system_prompt
-      ? basePrompt + '\n\nSTORE RULES:\n' + AI_CONFIG.system_prompt
+      ? basePrompt + '\n\nSTORE SPECIFIC INFO:\n' + AI_CONFIG.system_prompt
       : basePrompt) + memCtx;
 
-    // ── TWO-AI RAG: Using Router Phase ───────────────────────
+    // ── IMPROVED RAG: Find relevant KB cards ─────────────────
     let kbContext = '';
     const kbCards = AI_CONFIG.kb_cards || [];
-    
     if (kbCards.length) {
-      let relevant = null;
-      if (AI_CONFIG.api_key_deepseek) {
-        relevant = await findCardDeepSeekAI(userMsg, kbCards);
-      }
-      if (!relevant) relevant = findRelevantKBCards(userMsg, kbCards);
-
-      if (relevant && relevant.length) {
-        kbContext = '\n\n--- KNOWLEDGE BASE ---\n';
-        relevant.forEach(c => { kbContext += `\n[${c.name}]\n${c.content}\n`; });
-        kbContext += '\n--- IMPORTANT: Answer EXACTLY based on above KB info ONLY. ---';
+      const relevant = findRelevantKBCards(userMsg, kbCards);
+      if (relevant.length) {
+        kbContext = '\n\n--- KNOWLEDGE BASE (USE THIS TO ANSWER) ---\n';
+        relevant.forEach(c => {
+          kbContext += `\n[${c.icon || '📄'} ${c.name}]\n${c.content}\n`;
+        });
+        kbContext += '\n--- IMPORTANT: Answer based on above KB info only. Do not add info not in KB. ---';
       } else {
-        kbContext = '\n\n--- NOTE: No specific knowledge found. Tell them you do not know and offer human help. ---';
+        // IMPROVEMENT: Agar koi KB card match nahi hua toh AI ko batao
+        kbContext = '\n\n--- NOTE: No specific KB card found for this question. Give a helpful general answer and offer human support if needed. ---';
       }
     }
 
     const finalPrompt = systemPrompt + kbContext;
 
-    // IMPROVEMENT: Last messages history (limit to 5 to save heavy tokens)
-    const history = chatHistory.slice(-5);
+    // IMPROVEMENT: Last 10 messages history (pehle 8 tha)
+    const history = chatHistory.slice(-10);
 
     if (model.startsWith('gemini')) {
       const msgs = [
@@ -399,36 +339,24 @@ ANSWER RULE:
       const cardContent = (card.content || '').toLowerCase();
       const keywords = (card.keywords || '').toLowerCase().split(',').map(k => k.trim()).filter(Boolean);
 
-      // 1. Precise Name Match (Highest priority)
-      if (msg === cardName) score += 50;
-      else if (msg.includes(cardName) || cardName.includes(msg)) score += 25;
+      // 1. Exact Phrase Match in User Message (High Value)
+      if (msg.includes(cardName)) score += 20;
 
-      // 2. Multi-Word Keyword Matching (Smart boost)
+      // 2. Keyword Matching with Weights
       keywords.forEach(kw => {
-        if (!kw) return;
-        if (msg === kw || msg.includes(kw)) {
-          // Boost for critical keywords like 'email'
-          const isCritical = /\b(email|contact|rabta|mail)\b/i.test(kw);
-          score += isCritical ? 25 : (kw.length > 5 ? 15 : 10);
+        if (msg.includes(kw)) {
+          // Unique/Longer keywords are more specific
+          score += kw.length > 5 ? 12 : 8;
         }
-        
-        // Split multi-word keywords for partial matching
-        const kwParts = kw.split(/\s+/);
-        if (kwParts.length > 1) {
-          kwParts.forEach(part => {
-            if (part.length > 3 && msg.includes(part)) score += 5;
-          });
+        // Partial word matching (fuzzy)
+        if (kw.length > 4) {
+          const parts = msg.split(/\s+/);
+          if (parts.some(p => p.includes(kw) || kw.includes(p))) score += 4;
         }
       });
 
-      // 3. Content Scan (Semantic catch-all)
-      if (cardContent.includes(msg)) score += 8;
-      
-      // Fuzzy match for common typos in long words
-      const msgWords = msg.split(/\s+/);
-      msgWords.forEach(mw => {
-        if (mw.length > 4 && cardContent.includes(mw)) score += 2;
-      });
+      // 3. Content Scan (Deep Search)
+      if (cardContent.includes(msg)) score += 5;
 
       // 4. Page Awareness (Contextual Boost)
       // Agar user shipping page par hai aur card 'Shipping' ke baare mein hai
@@ -622,15 +550,14 @@ ANSWER RULE:
     const nameMatch = userMsg.match(/(?:my name is|i am|i'm|mera naam|main hoon)\s+([A-Za-z]+)/i);
     if (nameMatch) AI_MEMORY.name = nameMatch[1];
 
-    // Detect language from user message (Less aggressive roman urdu to allow pure english)
+    // Detect language from user message
     const hasUrdu = /[\u0600-\u06FF]/.test(userMsg);
     const hasArabic = /[\u0621-\u064A]/.test(userMsg);
-    const romanUrduWords = /\b(kya|mera|meri|woh|karo|kare|nahi|chahiye|shukriya|kaisay|kesy|batao|kahan|jab)\b/i.test(userMsg);
-    
+    const romanUrduWords = /\b(hai|hain|kya|mera|meri|aap|yeh|woh|karo|kare|nahi|bhi|aur|se|ko|ka|ki|ke|ha|hy|raha|rha|gaya|gye|chahiye)\b/i.test(userMsg);
     if (hasUrdu) AI_MEMORY.language = 'Urdu';
     else if (hasArabic) AI_MEMORY.language = 'Arabic';
     else if (romanUrduWords) AI_MEMORY.language = 'Roman Urdu';
-    // Let the AI auto-detect English instead of forcing it if it wasn't caught.
+    else AI_MEMORY.language = 'English';
 
     // Detect sentiment
     const angryWords = /\b(angry|frustrated|terrible|worst|useless|refund|scam|fraud|cheated|problem|issue|complaint)\b/i.test(userMsg);
@@ -685,6 +612,7 @@ ANSWER RULE:
     form.className = 'aezoon-email-card';
     form.innerHTML = `
       <div class="aezoon-email-icon">📧</div>
+      <div class="aezoon-email-title">Our team will get back to you!</div>
       <div class="aezoon-email-sub">Please enter your email — we'll reply within 24 hours.</div>
       <input class="aezoon-email-inp" id="aezoon-email-inp" type="email" placeholder="your@email.com">
       <div class="aezoon-email-btns">

@@ -81,6 +81,96 @@ body { font-family: system-ui, sans-serif; background:var(--bg); color:var(--tex
   .item-amount { color: inherit !important; }
 }
 
+/* ── PREMIUM REMAKE OVERRIDES ── */
+:root {
+  --bg:#070b18;
+  --surface:#121a2b;
+  --surface2:#1a263d;
+  --surface3:#253758;
+  --border:rgba(141,165,206,0.24);
+  --text:#edf3ff;
+  --muted:#9baecc;
+  --primary:#7f8cff;
+  --primary-hover:#98a2ff;
+  --success:#2fd5a3;
+  --danger:#ff708c;
+  --warning:#f7bb53;
+  --radius:14px;
+  --radius-sm:10px;
+  --shadow:0 18px 48px rgba(4,8,20,0.45);
+}
+[data-theme="light"] {
+  --bg:#eef3ff;
+  --surface:#ffffff;
+  --surface2:#f3f7ff;
+  --surface3:#e5ecfb;
+  --border:rgba(86,109,160,0.2);
+  --text:#18233a;
+  --muted:#61759b;
+  --primary:#5f71f8;
+  --shadow:0 14px 34px rgba(49,67,111,0.14);
+}
+
+body{
+  background:
+    radial-gradient(circle at 14% -8%, rgba(127,140,255,0.24), transparent 34%),
+    radial-gradient(circle at 86% 2%, rgba(81,184,255,0.2), transparent 30%),
+    var(--bg);
+}
+
+.filters,
+.report-card,
+.summary-bar,
+.list-item,
+.btn-back,
+.inp,
+.preset-btn{
+  border-color:var(--border);
+}
+
+.filters,
+.report-card,
+.summary-bar{
+  background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0)), var(--surface);
+  box-shadow:var(--shadow);
+}
+
+.btn-back,
+.preset-btn,
+.inp{
+  transition:all 0.24s cubic-bezier(0.22,1,0.36,1);
+}
+.btn-back:hover,
+.preset-btn:hover{
+  transform:translateY(-1px);
+  border-color:rgba(127,140,255,0.42);
+}
+.preset-btn.active{
+  background:linear-gradient(135deg, var(--primary), #55b2ff);
+}
+
+.inp{
+  background:linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)), var(--surface2);
+}
+.inp:focus{
+  border-color:rgba(127,140,255,0.62);
+  box-shadow:0 0 0 3px rgba(127,140,255,0.18);
+}
+
+.list-item{
+  background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0)), var(--surface2);
+  transition:all 0.22s cubic-bezier(0.22,1,0.36,1);
+}
+.list-item:hover{
+  transform:translateX(2px);
+  border-color:rgba(127,140,255,0.35);
+}
+
+.summary-bar{
+  border-width:1px;
+  border-image:linear-gradient(135deg, rgba(127,140,255,0.65), rgba(81,184,255,0.4)) 1;
+}
+
 </style>
 </head>
 <body data-theme="dark">
