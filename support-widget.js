@@ -236,18 +236,32 @@
     const key = AI_CONFIG.api_key_deepseek || '';
     if (!key || !cards.length) return null;
 
-    // Skip router for simple greetings or short messages to save deepseek tokens/cost
+    // Skip router for simple greetings or short messages (but NOT for contact/email requests)
     const cleanMsg = userMsg.toLowerCase().trim();
-    if (cleanMsg.length < 15 && /^(hi|hello|hey|salam|test|ok|yes|no|thanks|help)$/i.test(cleanMsg)) {
+    const isContactReq = /\b(email|contact|rabta|help|help me|support|connect)\b/i.test(cleanMsg);
+    
+    if (!isContactReq && cleanMsg.length < 15 && /^(hi|hello|hey|salam|test|ok|yes|no|thanks)$/i.test(cleanMsg)) {
        return null;
     }
 
-    // Small, efficient prompt for classification
-    const cardList = cards.map((c, i) => `${i}: Name: ${c.name} | Keywords: ${c.keywords}`).join('\n');
-    const systemPrompt = `Analyze the User's question and pick the MOST relevant card index.
-KB CARDS:
+    // ADVANCED ROUTER AI: This AI acts as a search specialist.
+    // It reads user question + all card names/tags and identifies the SINGLE best source.
+    const cardList = cards.map((c, i) => `ID ${i}: [Name: ${c.name}] [Tags: ${c.keywords}]`).join('\n');
+    const systemPrompt = `You are a Search Specialist AI. Your job is to find the MOST RELEVANT Knowledge Base card for the user's question.
+
+USER QUESTION: "${userMsg}"
+
+AVAILABLE CARDS (ID, Name, Tags):
 ${cardList}
-RULES: Return ONLY the index number. If no match, return -1. No other text.`;
+
+SCORING RULES:
+1. Look for matching keywords in Tags.
+2. Look for intent match in Card Name.
+3. If multiple cards match, pick the most specific one.
+4. If NO card matches at all, return -1.
+
+OUTPUT RULE:
+- Return ONLY the ID number (e.g., 0, 5, 12) or -1. No conversation.`;
 
     try {
       const res = await fetch('https://api.deepseek.com/chat/completions', {
@@ -307,7 +321,8 @@ ANSWER RULE:
 - Provide EXACTLY the answer to their question. Do NOT add extra unnecessary information.
 - If the Knowledge Base has the answer, extract only the relevant points.
 - If there is NO matching Knowledge Base data, DO NOT GUESS. Say: 'I am sorry, I do not have exactly this information. You can connect to a human agent.' (Or say this in the user's local language).
-- If payment/return logic fails, append [[HUMAN_NEEDED]].`;
+- If payment/return logic fails, append [[HUMAN_NEEDED]].
+- If the user asks for email contact or you cannot find the info, explicitly ask them to fill the email form or click 'Connect to Agent'.`;
 
     const systemPrompt = (AI_CONFIG.system_prompt
       ? basePrompt + '\n\nSTORE RULES:\n' + AI_CONFIG.system_prompt
@@ -384,24 +399,36 @@ ANSWER RULE:
       const cardContent = (card.content || '').toLowerCase();
       const keywords = (card.keywords || '').toLowerCase().split(',').map(k => k.trim()).filter(Boolean);
 
-      // 1. Exact Phrase Match in User Message (High Value)
-      if (msg.includes(cardName)) score += 20;
+      // 1. Precise Name Match (Highest priority)
+      if (msg === cardName) score += 50;
+      else if (msg.includes(cardName) || cardName.includes(msg)) score += 25;
 
-      // 2. Keyword Matching with Weights
+      // 2. Multi-Word Keyword Matching (Smart boost)
       keywords.forEach(kw => {
-        if (msg.includes(kw)) {
-          // Unique/Longer keywords are more specific
-          score += kw.length > 5 ? 12 : 8;
+        if (!kw) return;
+        if (msg === kw || msg.includes(kw)) {
+          // Boost for critical keywords like 'email'
+          const isCritical = /\b(email|contact|rabta|mail)\b/i.test(kw);
+          score += isCritical ? 25 : (kw.length > 5 ? 15 : 10);
         }
-        // Partial word matching (fuzzy)
-        if (kw.length > 4) {
-          const parts = msg.split(/\s+/);
-          if (parts.some(p => p.includes(kw) || kw.includes(p))) score += 4;
+        
+        // Split multi-word keywords for partial matching
+        const kwParts = kw.split(/\s+/);
+        if (kwParts.length > 1) {
+          kwParts.forEach(part => {
+            if (part.length > 3 && msg.includes(part)) score += 5;
+          });
         }
       });
 
-      // 3. Content Scan (Deep Search)
-      if (cardContent.includes(msg)) score += 5;
+      // 3. Content Scan (Semantic catch-all)
+      if (cardContent.includes(msg)) score += 8;
+      
+      // Fuzzy match for common typos in long words
+      const msgWords = msg.split(/\s+/);
+      msgWords.forEach(mw => {
+        if (mw.length > 4 && cardContent.includes(mw)) score += 2;
+      });
 
       // 4. Page Awareness (Contextual Boost)
       // Agar user shipping page par hai aur card 'Shipping' ke baare mein hai
@@ -658,7 +685,6 @@ ANSWER RULE:
     form.className = 'aezoon-email-card';
     form.innerHTML = `
       <div class="aezoon-email-icon">📧</div>
-      <div class="aezoon-email-title">Our team will get back to you!</div>
       <div class="aezoon-email-sub">Please enter your email — we'll reply within 24 hours.</div>
       <input class="aezoon-email-inp" id="aezoon-email-inp" type="email" placeholder="your@email.com">
       <div class="aezoon-email-btns">
