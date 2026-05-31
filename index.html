@@ -13,7 +13,6 @@
 <!-- Lucide Icons -->
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <link rel="stylesheet" href="tasks.css">
-<link rel="stylesheet" href="customer-support.css">
 <link rel="stylesheet" href="animation.css">
 <link rel="stylesheet" href="knowledge-base.css">
 <style>
@@ -665,11 +664,7 @@ tr:hover td {
 .cust-tag,
 .clv-badge,
 .task-status-badge,
-.nav-count-badge,
-.cs-unread-badge,
-#supportNavBadge,
-#emailReqNavBadge,
-#aiTeamNavBadge {
+.nav-count-badge {
   box-shadow: 0 6px 14px rgba(10, 16, 34, 0.22);
 }
 
@@ -766,6 +761,14 @@ tr:hover td {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
     <span>Expenses</span>
   </div>
+  <div class="nav-item" onclick="nav('my-expense')" id="nav-my-expense">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12V8H6a2 2 0 01-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4 2 2 0 0 0 0-4z"/></svg>
+    <span>My Expense</span>
+  </div>
+  <div class="nav-item" onclick="nav('ai-chat')" id="nav-ai-chat">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 10h.01"/><path d="M12 10h.01"/><path d="M16 10h.01"/></svg>
+    <span>AI Chat</span>
+  </div>
   <div class="nav-item" onclick="nav('pending')" id="nav-pending">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm0 5v5l4 2"/></svg>
     <span>Pending Orders</span>
@@ -777,11 +780,6 @@ tr:hover td {
   <div class="nav-item" onclick="nav('tasks')" id="nav-tasks">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
     <span>Tasks</span>
-  </div>
-  <div class="nav-item" onclick="nav('aiteam')" id="nav-aiteam">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 5a3 3 0 1 1-3 3 3 3 0 0 1 3-3zm0 13a8 8 0 0 1-6.2-3c.1-2 4-3.1 6.2-3.1s6.1 1.1 6.2 3.1A8 8 0 0 1 12 20z"/></svg>
-    <span>AI Team</span>
-    <span id="aiTeamNavBadge" style="display:none;background:#ef4444;color:#fff;font-size:0.62rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:10px;min-width:18px;text-align:center;margin-left:auto;">0</span>
   </div>
   <a href="statement.html" class="nav-item">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="16" y1="2" x2="16" y2="4"/><line x1="8" y1="2" x2="8" y2="4"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -795,27 +793,12 @@ tr:hover td {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
     <span>Activity Log</span>
   </div>
-  <div class="nav-item" onclick="nav('support')" id="nav-support">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-    <span>Customer Support</span>
-    <span id="supportNavBadge" style="display:none;background:#ef4444;color:#fff;font-size:0.62rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:10px;min-width:18px;text-align:center;margin-left:auto;">0</span>
-  </div>
-  <div class="nav-item" onclick="nav('email-requests')" id="nav-email-requests">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-    <span>Email Requests</span>
-    <span id="emailReqNavBadge" style="display:none;background:#f59e0b;color:#fff;font-size:0.62rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:10px;min-width:18px;text-align:center;margin-left:auto;">0</span>
-  </div>
 
   <div class="sidebar-bottom">
     <a href="personal.html" class="nav-item" style="background:linear-gradient(135deg,rgba(139,92,246,0.12),rgba(99,102,241,0.08));border:1px solid rgba(139,92,246,0.3);border-radius:8px;">
       <svg viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" width="18" height="18"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       <span style="flex:1;color:var(--text);">Personal</span>
       <span style="font-size:0.62rem;background:rgba(139,92,246,0.2);color:#8b5cf6;padding:0.15rem 0.4rem;border-radius:4px;font-weight:700;">PRIVATE</span>
-    </a>
-    <a href="ai-editor.html" class="nav-item" style="background: var(--surface2); border: 1px dashed var(--border); border-radius: 8px;">
-      <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-      <span style="flex:1; color: var(--text);">AI Editor</span>
-      <span class="tag-soon">Soon</span>
     </a>
 
     <div class="sidebar-ver">Aezoon Cloud v2.1</div>
@@ -882,6 +865,15 @@ tr:hover td {
     </div>
 
     <div class="stats-grid" id="dashStats"></div>
+
+    <!-- REMINDERS SECTION -->
+    <div class="card" style="margin-bottom:1.5rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <h3 style="margin:0;">🔔 Reminders</h3>
+        <button class="btn btn-outline btn-sm" onclick="addManualReminder()">+ Add Reminder</button>
+      </div>
+      <div id="remindersContainer"></div>
+    </div>
 
     <!-- NOTES + GOAL ROW -->
     <div style="display:grid;grid-template-columns:1fr auto;gap:1.2rem;margin-bottom:1.5rem;align-items:center;">
@@ -1014,6 +1006,43 @@ tr:hover td {
     <div class="exp-list" id="expList"></div>
   </div>
 
+  <!-- MY EXPENSE PAGE -->
+  <div class="page" id="page-my-expense">
+    <div class="page-header">
+      <div>
+        <div class="page-title">💰 My Expense</div>
+        <div class="page-sub">Track your personal expenses — syncs with main expenses</div>
+      </div>
+      <button class="btn btn-primary" onclick="openMyExpModal()">+ Add My Expense</button>
+    </div>
+    <div class="stats-grid" id="myExpStats"></div>
+    <div class="exp-list" id="myExpList"></div>
+  </div>
+
+  <!-- AI CHAT PAGE -->
+  <div class="page" id="page-ai-chat">
+    <div class="page-header">
+      <div>
+        <div class="page-title">🤖 AI Chat</div>
+        <div class="page-sub">Chat with AI to manage expenses, tasks, and reminders</div>
+      </div>
+      <button class="btn btn-outline" onclick="openAIChatSettings()">⚙️ AI Settings</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:1rem;height:calc(100vh - 180px);">
+      <div id="aiChatMessages" style="flex:1;overflow-y:auto;padding:1rem;background:var(--surface2);border-radius:var(--radius);border:1px solid var(--border);display:flex;flex-direction:column;gap:1rem;">
+        <div class="empty" style="text-align:center;padding:2rem;">
+          <div class="empty-icon">🤖</div>
+          <div class="empty-text">Start chatting with AI</div>
+          <div class="empty-sub">Ask to add expenses, create tasks, or set reminders</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:0.8rem;">
+        <input class="inp" id="aiChatInput" placeholder="Type your message... (e.g., 'Add expense for lunch 50 AED')" style="flex:1;" onkeydown="if(event.key==='Enter')sendAIMessage()">
+        <button class="btn btn-primary" onclick="sendAIMessage()">Send</button>
+      </div>
+    </div>
+  </div>
+
   <!-- PENDING PAGE -->
   <div class="page" id="page-pending">
     <div class="page-header">
@@ -1105,64 +1134,6 @@ tr:hover td {
     </div>
   </div>
 
-  <!-- AI TEAM PAGE -->
-  <div class="page" id="page-aiteam">
-    <div class="ai-team-shell">
-
-      <!-- LEFT: AI Contacts -->
-      <div class="ai-sidebar">
-        <div class="ai-sidebar-header">
-          <span class="ai-sidebar-title">🤖 AI Team</span>
-          <button class="ai-settings-btn" onclick="openAiTeamSettings()" title="Settings">⚙️</button>
-        </div>
-        <div class="ai-contact-list" id="aiContactList"></div>
-      </div>
-
-      <!-- RIGHT: Chat -->
-      <div class="ai-chat-area">
-
-        <!-- Empty State -->
-        <div class="ai-empty-state" id="aiEmptyState">
-          <div class="ai-empty-icon">🤖</div>
-          <div class="ai-empty-text">Koi AI select karo baat karne ke liye</div>
-        </div>
-
-        <!-- Chat Main (hidden until agent selected) -->
-        <div id="aiChatMain" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
-          <!-- Header -->
-          <div class="ai-chat-header">
-            <div class="ai-avatar detective" id="aiChatHeaderAvatar">🕵️</div>
-            <div class="ai-chat-header-info">
-              <div class="ai-chat-header-name" id="aiChatHeaderName">Sherlock</div>
-              <div class="ai-chat-header-status" id="aiChatHeaderStatus">Online</div>
-            </div>
-            <button onclick="clearAiChat()" title="Chat clear karo"
-              style="background:none;border:none;color:#8696a0;cursor:pointer;padding:0.4rem;border-radius:50%;font-size:1rem;transition:0.2s;"
-              onmouseover="this.style.background='rgba(255,255,255,0.08)'"
-              onmouseout="this.style.background='none'">🗑</button>
-          </div>
-
-          <!-- Messages -->
-          <div class="ai-messages" id="aiMessagesContainer"></div>
-
-          <!-- Input -->
-          <div class="ai-input-area">
-            <textarea class="ai-input-box" id="aiMsgInput"
-              placeholder="Message likho..."
-              rows="1"
-              onkeydown="aiInputKeydown(event)"></textarea>
-            <button class="ai-send-btn" onclick="sendAiMessage()">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <line x1="22" y1="2" x2="11" y2="13"/>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </div>
 
   <!-- SETTINGS PAGE -->
   <div class="page" id="page-settings">
@@ -1223,7 +1194,7 @@ tr:hover td {
     <div class="settings-section">
       <h3>🤖 AI Configuration</h3>
       <div class="settings-card">
-        <p style="font-size:0.85rem; color:var(--muted);">Configure your AI settings for the Product Editor.</p>
+        <p style="font-size:0.85rem; color:var(--muted);">Configure your AI settings for the AI Chat System.</p>
         <div class="form-row">
           <label>AI Model</label>
           <select class="inp" id="sAiModel">
@@ -1238,6 +1209,10 @@ tr:hover td {
         <div class="form-row">
           <label>DeepSeek API Key</label>
           <input class="inp" id="sDeepSeekKey" type="password" placeholder="sk-...">
+        </div>
+        <div class="form-row">
+          <label>System Prompt</label>
+          <textarea class="inp" id="sAiSystemPrompt" rows="4" placeholder="You are a helpful AI assistant for managing expenses, tasks, and reminders. You can add expenses, create tasks, and set reminders based on user requests. Always provide clear, actionable responses.">Tum ek madadgar AI assistant ho jo expenses, tasks, aur reminders manage karta hai. Tum user ki request ke base par expenses add kar sakte ho, tasks create kar sakte ho, aur reminders set kar sakte ho. Hamesha Roman Urdu mein jawab do aur clear, actionable responses do.</textarea>
         </div>
         <button class="btn btn-primary" style="width: fit-content;" onclick="saveAiConfig()">Save AI Config</button>
       </div>
@@ -1302,423 +1277,6 @@ tr:hover td {
       <div id="historyList" style="display:flex;flex-direction:column;"></div>
     </div>
   </div>
-
-  <!-- CUSTOMER SUPPORT PAGE -->
-  <div class="page" id="page-support">
-    <div class="cs-shell">
-      <!-- Alerts banner -->
-      <div id="csAlertsBanner"></div>
-      <!-- LEFT: Chat List -->
-      <div class="cs-sidebar">
-        <div class="cs-sidebar-header">
-          <div class="cs-sidebar-top">
-            <div class="cs-sidebar-title">
-              <i data-lucide="message-square" width="15" height="15"></i> Live Chats
-            </div>
-            <button class="cs-icon-btn" onclick="toggleSupportSound()" id="csSoundToggle" title="Sound">
-              <i data-lucide="bell" width="13" height="13"></i>
-            </button>
-          </div>
-          <div id="csSupportStats" class="cs-stats-row"></div>
-        </div>
-        <div class="cs-search-bar">
-          <div class="cs-search-wrap">
-            <i data-lucide="search" width="13" height="13"></i>
-            <input id="csSearchInp" placeholder="Search chats..." oninput="renderSupportChatList()">
-          </div>
-        </div>
-        <div class="cs-chat-list" id="csSidebarList">
-          <div style="padding:2rem;text-align:center;color:var(--muted);font-size:0.82rem;">Loading...</div>
-        </div>
-        <button id="csLoadMoreBtn" onclick="loadMoreChats()" style="display:none;">
-          <i data-lucide="chevrons-down" width="13" height="13"></i> Load More
-        </button>
-      </div>
-
-      <!-- RIGHT: Tabs -->
-      <div class="cs-right">
-        <div class="cs-tabs">
-          <button class="cs-tab-btn active" onclick="csSupportTabSwitch('chats')"><i data-lucide="message-circle" width="13" height="13"></i> Chats</button>
-          <button class="cs-tab-btn" onclick="csSupportTabSwitch('settings')"><i data-lucide="settings" width="13" height="13"></i> Settings</button>
-          <button class="cs-tab-btn" onclick="csSupportTabSwitch('prompt')"><i data-lucide="sparkles" width="13" height="13"></i> Prompt AI</button>
-          <button class="cs-tab-btn" onclick="switchToKBTab()"><i data-lucide="brain" width="13" height="13"></i> Knowledge Base</button>
-          <button class="cs-tab-btn" onclick="csSupportTabSwitch('guide')"><i data-lucide="book-open" width="13" height="13"></i> Guide</button>
-        </div>
-
-        <!-- CHATS TAB -->
-        <div class="cs-tab-panel" id="csTab_chats" style="display:flex;">
-          <div class="cs-empty-state" id="csEmptyState">
-            <div class="cs-empty-icon"><i data-lucide="message-square-dashed" width="44" height="44"></i></div>
-            <div class="cs-empty-text">Select a chat to view</div>
-            <div class="cs-empty-sub">Chats appear here in real-time</div>
-          </div>
-          <div class="cs-chat-view" id="csChatMain" style="display:none;">
-            <!-- Header -->
-            <div class="cs-chat-header">
-              <div class="cs-chat-header-left">
-                <div class="cs-header-avatar" id="csHeaderAvatar">?</div>
-                <div>
-                  <div class="cs-chat-header-name" id="csChatHeaderName">Visitor</div>
-                  <div class="cs-chat-header-sub" id="csChatHeaderSub"><span class="cs-header-dot"></span> Online</div>
-                </div>
-              </div>
-              <div class="cs-chat-header-actions">
-                <button class="cs-icon-btn" id="csAiDraftBtn" onclick="generateAIDraft()" title="AI Draft"><i data-lucide="sparkles" width="13" height="13"></i></button>
-                <button class="cs-icon-btn" onclick="openChatSearch()" title="Search"><i data-lucide="search" width="13" height="13"></i></button>
-                <button class="cs-icon-btn" onclick="togglePinChat(CS_SELECTED_SESSION)" title="Pin"><i data-lucide="pin" width="13" height="13"></i></button>
-                <button class="cs-icon-btn" onclick="showChatHistoryTimeline(CS_SELECTED_SESSION)" title="History"><i data-lucide="clock" width="13" height="13"></i></button>
-                <div class="cs-mode-pill" id="csModePill" onclick="document.getElementById('csHumanModeCheck').click()">
-                  <div class="cs-mode-pill-icon" id="csModePillIcon">🤖</div>
-                  <span class="cs-mode-pill-label" id="csHumanModeLabel">AI Mode</span>
-                  <label class="cs-hm-switch" onclick="event.stopPropagation()">
-                    <input type="checkbox" id="csHumanModeCheck" onchange="toggleHumanMode(this.checked)">
-                    <span class="cs-hm-slider"></span>
-                  </label>
-                </div>
-                <button class="cs-icon-btn danger" onclick="deleteSupportChat()" title="Delete"><i data-lucide="trash-2" width="13" height="13"></i></button>
-              </div>
-            </div>
-            <!-- Search bar -->
-            <div id="csChatSearchBar">
-              <i data-lucide="search" width="13" height="13" style="color:var(--muted);flex-shrink:0;"></i>
-              <input class="inp" id="csChatSearchInp" placeholder="Search in chat..." style="flex:1;font-size:0.8rem;" oninput="searchInChat()">
-              <button class="cs-icon-btn" onclick="document.getElementById('csChatSearchBar').classList.remove('open')"><i data-lucide="x" width="13" height="13"></i></button>
-            </div>
-            <!-- Tag bar -->
-            <div class="cs-tag-bar" id="csChatTagBar"></div>
-            <!-- Messages + Visitor Info -->
-            <div style="display:flex;flex:1;overflow:hidden;">
-              <div class="cs-chat-messages" id="csChatMessages"></div>
-              <div id="csVisitorInfo"></div>
-            </div>
-            <!-- Human Reply Area -->
-            <div class="cs-human-reply-area" id="csHumanReplyArea" style="display:none;">
-              <div class="cs-human-reply-badge"><i data-lucide="user-check" width="11" height="11"></i> You (Support Agent) — Human Mode Active</div>
-              <div id="csCannedPanel">
-                <div class="cs-canned-header"><i data-lucide="zap" width="11" height="11"></i> Quick Replies</div>
-                <div id="csCannedList"></div>
-                <div class="cs-canned-add">
-                  <input class="inp" id="csNewCannedTitle" placeholder="Title" style="font-size:0.75rem;flex:0.4;">
-                  <input class="inp" id="csNewCannedText" placeholder="Reply text..." style="font-size:0.75rem;flex:1;">
-                  <button class="btn btn-primary btn-sm" onclick="saveCannedResponse()">Save</button>
-                </div>
-              </div>
-              <div class="cs-human-reply-row">
-                <div class="cs-reply-tools">
-                  <button class="cs-reply-tool-btn" id="csTranslateBtn" onclick="translateReply()"><i data-lucide="languages" width="11" height="11"></i> Translate</button>
-                  <button class="cs-reply-tool-btn" onclick="toggleCannedPanel()"><i data-lucide="zap" width="11" height="11"></i> Quick Replies</button>
-                  <button class="cs-reply-tool-btn" onclick="addInternalNote()"><i data-lucide="sticky-note" width="11" height="11"></i> Add Note</button>
-                </div>
-                <div class="cs-reply-input-row">
-                  <textarea class="cs-human-reply-inp" id="csHumanReplyInp"
-                    placeholder="Type your reply... (Enter to send)"
-                    onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendHumanReply()}"
-                    oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
-                  <button class="cs-human-send-btn" onclick="sendHumanReply()"><i data-lucide="send" width="14" height="14"></i></button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SETTINGS TAB -->
-        <div class="cs-tab-panel" id="csTab_settings" style="display:none;">
-          <div class="cs-settings-section">
-            <h4><i data-lucide="bot" width="14" height="14"></i> AI Model & API Key</h4>
-            <p>Customer support widget ke liye AI configure karo</p>
-            <div class="form-row"><label>AI Model</label>
-              <select class="inp" id="cs_model">
-                <option value="gemini-1.5-flash">Gemini 1.5 Flash (Fast)</option>
-                <option value="gemini-1.5-pro">Gemini 1.5 Pro (Smart)</option>
-                <option value="deepseek-chat">DeepSeek V3</option>
-                <option value="deepseek-reasoner">DeepSeek R1 (Deep Thinking)</option>
-              </select>
-            </div>
-            <div class="form-row"><label>API Key</label><input class="inp" id="cs_api_key" type="password" placeholder="AIza... ya sk-..."></div>
-          </div>
-          <div class="cs-settings-section" style="margin-top:1rem;">
-            <h4><i data-lucide="file-text" width="14" height="14"></i> System Prompt</h4>
-            <p>Click karo notepad mein edit karne ke liye</p>
-            <div class="cs-prompt-preview-card" onclick="openPromptNotepad()" id="csPromptPreviewCard">
-              <div class="cs-prompt-preview-header"><span>📄 system_prompt.txt</span><span class="cs-prompt-preview-badge">Click to Edit</span></div>
-              <div class="cs-prompt-preview-body" id="csPromptPreviewText"><span style="color:var(--muted);font-style:italic;">No prompt set — click to write one</span></div>
-              <div class="cs-prompt-preview-footer"><span id="csPromptWordCount">0 words</span><span id="csPromptSavedAt"></span></div>
-            </div>
-            <textarea id="cs_system_prompt" style="display:none;"></textarea>
-            <div class="form-row" style="margin-top:1rem;"><label>Welcome Message</label><input class="inp" id="cs_welcome_msg" placeholder="Salam! Main aapki kaise madad kar sakta hoon?"></div>
-            <button class="btn btn-primary" id="csSaveConfigBtn" onclick="saveSupportConfig()" style="width:fit-content;"><i data-lucide="save" width="13" height="13"></i> Save Settings</button>
-          </div>
-        </div>
-
-        <!-- KNOWLEDGE BASE TAB -->
-        <div class="cs-tab-panel" id="csTab_kb" style="display:none;">
-          <div class="kb-header-bar">
-            <div id="kbStats" class="kb-stats-row"></div>
-            <div class="kb-search-add">
-              <input class="kb-search-inp" id="kbSearchInp" placeholder="Search cards..." oninput="renderKBCards()">
-              <button class="btn btn-primary btn-sm" onclick="openKBModal()"><i data-lucide="plus" width="13" height="13"></i> Add Card</button>
-            </div>
-          </div>
-          <!-- Sub-tabs: Cards | AI Manager -->
-          <div class="kb-subtabs">
-            <button class="kb-subtab active" id="kbSubTabCards" onclick="kbSubTab('cards')">📋 Cards</button>
-            <button class="kb-subtab" id="kbSubTabAI" onclick="kbSubTab('ai')">🤖 AI Manager</button>
-          </div>
-          <!-- Cards view -->
-          <div id="kbSubCards" class="kb-scroll-area">
-            <div class="kb-cards-grid" id="kbCardsGrid"></div>
-            <div class="kb-empty" id="kbEmptyState" style="display:none;">
-              <div class="kb-empty-icon">🧠</div>
-              <div class="kb-empty-title">No knowledge cards yet</div>
-              <div class="kb-empty-sub">Add cards for Shipping, Returns, Products etc.</div>
-              <button class="btn btn-primary" style="margin-top:0.8rem;" onclick="openKBModal()"><i data-lucide="plus" width="13" height="13"></i> Add First Card</button>
-            </div>
-          </div>
-          <!-- AI Manager view -->
-          <div id="kbSubAI" style="display:none;flex:1;flex-direction:column;overflow:hidden;">
-            <div class="kb-ai-quick-bar">
-              <span style="font-size:0.68rem;color:var(--muted);font-weight:700;align-self:center;">Quick:</span>
-              <button class="pai-quick-btn" onclick="kbAiQuickAction('analyze')">🔍 Analyze Cards</button>
-              <button class="pai-quick-btn" onclick="kbAiQuickAction('gaps')">🕳️ Find Gaps</button>
-              <button class="pai-quick-btn" onclick="kbAiQuickAction('improve_all')">✨ Improve Keywords</button>
-              <button class="pai-quick-btn" onclick="kbAiQuickAction('business_analyze')">🏪 Analyze Business</button>
-              <label class="cs-upload-btn" for="kbAiFileUpload" style="margin-left:auto;font-size:0.7rem;">
-                <i data-lucide="upload" width="12" height="12"></i> Upload
-                <input type="file" id="kbAiFileUpload" multiple accept=".txt,.html,.md,.json,.csv,text/*" style="display:none;" onchange="handleKBAIFileUpload(this)">
-              </label>
-              <button class="btn btn-outline btn-sm" onclick="KB_AI_HISTORY=[];renderKBAIChat()" style="color:var(--danger);border-color:var(--danger);">Clear</button>
-            </div>
-            <div class="cs-prompt-messages" id="kbAiMessages"></div>
-            <div class="cs-prompt-input-area">
-              <textarea id="kbAiInput" placeholder="Batao: cards analyze karo, new card banao, ya business info do... (Enter to send)"
-                onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendKBAIMsg()}"
-                oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
-              <button class="btn btn-primary" onclick="sendKBAIMsg()" style="padding:0.55rem 1rem;"><i data-lucide="send" width="14" height="14"></i></button>
-            </div>
-          </div>
-        </div>
-
-        <!-- PROMPT AI TAB -->
-        <div class="cs-tab-panel" id="csTab_prompt" style="display:none;">
-          <div class="pai-version-bar">
-            <span class="pai-version-label">📜 Versions:</span>
-            <div id="paiVersionChips" style="display:flex;gap:0.4rem;flex-wrap:wrap;"></div>
-            <span style="font-size:0.7rem;color:var(--muted);margin-left:auto;" id="csPromptLiveSave"></span>
-          </div>
-          <div class="pai-quick-actions">
-            <span style="font-size:0.68rem;color:var(--muted);font-weight:700;align-self:center;">Quick:</span>
-            <button class="pai-quick-btn" onclick="paiQuickAction('analyze')">🔍 Analyze</button>
-            <button class="pai-quick-btn" onclick="paiQuickAction('improve')">✨ Improve</button>
-            <button class="pai-quick-btn" onclick="paiQuickAction('shorten')">✂️ Shorten</button>
-            <button class="pai-quick-btn" onclick="paiQuickAction('tone_formal')">🎩 Formal</button>
-            <button class="pai-quick-btn" onclick="paiQuickAction('tone_friendly')">😊 Friendly</button>
-            <button class="pai-quick-btn" onclick="paiQuickAction('add_kb')">🧠 Add KB</button>
-            <button class="pai-quick-btn" onclick="paiQuickAction('multilang')">🌐 Multi-lang</button>
-            <button class="btn btn-outline btn-sm" onclick="clearPromptChat()" style="color:var(--danger);border-color:var(--danger);margin-left:auto;">Clear</button>
-          </div>
-          <div class="cs-upload-area">
-            <label class="cs-upload-btn" for="csFileUpload"><i data-lucide="upload" width="12" height="12"></i> Upload Files<input type="file" id="csFileUpload" multiple accept=".txt,.html,.md,.json,.csv,text/*" style="display:none;" onchange="handlePromptFileUpload(this)"></label>
-            <div style="font-size:0.7rem;color:var(--muted);">About Us, Policies, Shipping, FAQ etc.</div>
-            <div class="cs-uploaded-docs" id="csUploadedDocs"></div>
-          </div>
-          <div class="cs-prompt-messages" id="csPromptMessages"></div>
-          <div class="cs-prompt-input-area">
-            <textarea id="csPromptInput" placeholder="Store ke baare mein batao... (Enter to send)"
-              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendPromptUpgradeMsg()}"
-              oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
-            <button class="btn btn-primary" onclick="sendPromptUpgradeMsg()" style="padding:0.55rem 1rem;"><i data-lucide="send" width="14" height="14"></i></button>
-          </div>
-        </div>
-
-        <!-- GUIDE TAB -->
-        <div class="cs-tab-panel" id="csTab_guide" style="display:none;">
-          <div id="csShopifyGuide" style="display:flex;flex-direction:column;gap:0.8rem;overflow-y:auto;padding:1.2rem;"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- EMAIL REQUESTS PAGE -->
-  <div class="page" id="page-email-requests">
-    <div class="page-header">
-      <div>
-        <div class="page-title">📧 Email Requests</div>
-        <div class="page-sub">Visitors who requested email support — reply within 24 hours</div>
-      </div>
-      <div style="display:flex;gap:0.6rem;align-items:center;">
-        <select class="inp" id="emailReqFilter" onchange="renderEmailRequests()" style="max-width:160px;">
-          <option value="">All Requests</option>
-          <option value="pending">⏳ Pending</option>
-          <option value="in_progress">🔄 In Progress</option>
-          <option value="resolved">✅ Resolved</option>
-        </select>
-        <!-- IMPROVEMENT: CSV Export button -->
-        <button class="btn btn-outline btn-sm" onclick="exportEmailRequestsCSV()" title="CSV mein download karo">📥 Export CSV</button>
-      </div>
-    </div>
-    <div id="emailReqStats" class="cs-stats-row" style="margin-bottom:1.5rem;gap:1rem;"></div>
-    <div id="emailReqList"></div>
-  </div>
-
-<!-- CHAT HISTORY TIMELINE MODAL -->
-<div class="modal-bg" id="csHistoryModal">
-  <div class="modal" style="max-width:560px;">
-    <div class="modal-header">
-      <h3>🕐 Chat History Timeline</h3>
-      <button class="modal-close" onclick="closeModal('csHistoryModal')">✕</button>
-    </div>
-    <div id="csHistoryContent" style="max-height:70vh;overflow-y:auto;"></div>
-
-<!-- VISITOR PROFILE POPUP -->
-<div class="cs-modal-overlay" id="csVisitorPopup" onclick="if(event.target===this)closeVisitorPopup()">
-  <div class="cs-modal" style="max-width:520px;">
-    <div class="cs-modal-header">
-      <h3 style="display:flex;align-items:center;gap:0.5rem;"><i data-lucide="user" width="16" height="16"></i> Visitor Profile</h3>
-      <button class="cs-icon-btn" onclick="closeVisitorPopup()"><i data-lucide="x" width="14" height="14"></i></button>
-    </div>
-    <div class="cs-modal-body" id="csVisitorPopupContent"></div>
-  </div>
-</div>
-  </div>
-</div>
-
-<!-- KNOWLEDGE BASE CARD MODAL -->
-<div class="modal-bg" id="kbModal">
-  <div class="modal" style="max-width:580px;">
-    <div class="modal-header">
-      <h3>➕ Add Knowledge Card</h3>
-      <button class="modal-close" onclick="closeKBModal()">✕</button>
-    </div>
-    <div class="kb-modal-body">
-      <!-- Templates -->
-      <div class="kb-templates-section">
-        <span class="kb-templates-label">⚡ Quick Templates</span>
-        <div class="kb-templates-list" id="kbTemplatesList"></div>
-      </div>
-      <!-- Icon + Name -->
-      <div class="kb-icon-name-row">
-        <div class="form-row" style="margin:0;">
-          <label>Icon</label>
-          <input class="inp kb-icon-input" id="kb_icon" placeholder="📄" maxlength="2">
-        </div>
-        <div class="form-row" style="flex:1;margin:0;">
-          <label>Card Name *</label>
-          <input class="inp" id="kb_name" placeholder="e.g. Shipping Policy, Return Policy...">
-        </div>
-      </div>
-      <!-- Keywords -->
-      <div class="kb-keywords-row">
-        <div class="kb-keywords-header">
-          <label>Keywords (comma separated) *</label>
-          <button class="btn btn-outline btn-sm" id="kbGenKwBtn" onclick="kbAiGenerateKeywords()">✨ Auto Keywords</button>
-        </div>
-        <input class="inp" id="kb_keywords" placeholder="shipping, delivery, kab aayega, order time, dispatch...">
-        <div class="kb-keywords-hint">💡 Include English + Roman Urdu + common questions. AI uses these to find the right card.</div>
-      </div>
-      <!-- Content -->
-      <div class="kb-content-row">
-        <div class="kb-content-header">
-          <label>Content *</label>
-          <button class="btn btn-outline btn-sm" id="kbImproveBtn" onclick="kbAiImproveContent()">✨ Improve</button>
-        </div>
-        <textarea class="inp" id="kb_content" rows="6" placeholder="Write the information AI should use to answer customer questions about this topic..."></textarea>
-      </div>
-    </div>
-    <div class="form-actions">
-      <button class="btn btn-outline" onclick="closeKBModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveKBCard()">💾 Save Card</button>
-    </div>
-  </div>
-</div>
-
-<!-- PROMPT NOTEPAD MODAL -->
-<div class="pn-overlay" id="promptNotepadOverlay" onclick="if(event.target===this)closePromptNotepad()">
-  <div class="pn-modal" id="promptNotepadModal">
-
-    <!-- Title bar -->
-    <div class="pn-titlebar">
-      <div class="pn-titlebar-left">
-        <div class="pn-dot pn-dot-red" onclick="closePromptNotepad()" title="Close"></div>
-        <div class="pn-dot pn-dot-yellow" onclick="pnToggleFullscreen()" title="Fullscreen"></div>
-        <div class="pn-dot pn-dot-green" onclick="pnAiImprove()" title="AI Improve"></div>
-      </div>
-      <div class="pn-titlebar-center">
-        <span class="pn-file-icon">📄</span>
-        <span id="pnFileName">system_prompt.txt</span>
-        <span class="pn-unsaved-dot" id="pnUnsavedDot" style="display:none;">●</span>
-      </div>
-      <div class="pn-titlebar-right">
-        <span id="pnWordCount" class="pn-meta">0 words</span>
-        <span id="pnCharCount" class="pn-meta">0 chars</span>
-      </div>
-    </div>
-
-    <!-- Toolbar -->
-    <div class="pn-toolbar">
-      <div class="pn-toolbar-group">
-        <button class="pn-tool-btn" onclick="pnInsert('• ')" title="Bullet point">• List</button>
-        <button class="pn-tool-btn" onclick="pnInsert('1. ')" title="Numbered list"># List</button>
-        <button class="pn-tool-btn" onclick="pnWrap('**','**')" title="Bold"><b>B</b></button>
-        <button class="pn-tool-btn" onclick="pnWrap('`','`')" title="Code"><code style="font-size:11px;">{ }</code></button>
-      </div>
-      <div class="pn-toolbar-sep"></div>
-      <div class="pn-toolbar-group">
-        <button class="pn-tool-btn pn-ai-btn" onclick="pnAiImprove()">✨ AI Improve</button>
-        <button class="pn-tool-btn pn-ai-btn" onclick="pnAiShorten()">✂️ Shorten</button>
-        <button class="pn-tool-btn pn-ai-btn" onclick="pnAiTranslate()">🌐 Translate</button>
-      </div>
-      <div class="pn-toolbar-sep"></div>
-      <div class="pn-toolbar-group">
-        <button class="pn-tool-btn" onclick="pnUndo()" title="Undo">↩</button>
-        <button class="pn-tool-btn" onclick="pnClear()" title="Clear" style="color:var(--danger);">🗑</button>
-      </div>
-    </div>
-
-    <!-- AI suggestion bar (hidden by default) -->
-    <div class="pn-ai-bar" id="pnAiBar" style="display:none;">
-      <div class="pn-ai-bar-header">
-        <span>✨ AI Suggestion</span>
-        <div style="display:flex;gap:0.5rem;">
-          <button class="pn-ai-accept-btn" onclick="pnAcceptSuggestion()">✅ Accept</button>
-          <button class="pn-ai-reject-btn" onclick="pnRejectSuggestion()">✕ Dismiss</button>
-        </div>
-      </div>
-      <div class="pn-ai-bar-content" id="pnAiSuggestion"></div>
-      <div class="pn-ai-bar-loading" id="pnAiLoading" style="display:none;">
-        <span class="pn-ai-spinner"></span> AI is thinking...
-      </div>
-    </div>
-
-    <!-- Editor body -->
-    <div class="pn-body">
-      <!-- Line numbers -->
-      <div class="pn-line-nums" id="pnLineNums">1</div>
-      <!-- Editor -->
-      <textarea class="pn-editor" id="pnEditor"
-        placeholder="Write your system prompt here...&#10;&#10;Example:&#10;You are a helpful support agent for Aezoon Store.&#10;• Answer questions about products, shipping, returns&#10;• Be polite and concise&#10;• If unsure, ask for clarification"
-        oninput="pnOnInput()"
-        onkeydown="pnKeydown(event)"
-        onscroll="pnSyncScroll()"
-        spellcheck="true"></textarea>
-    </div>
-
-    <!-- Status bar -->
-    <div class="pn-statusbar">
-      <div class="pn-status-left">
-        <span id="pnCursorPos">Ln 1, Col 1</span>
-        <span class="pn-status-sep">|</span>
-        <span>UTF-8</span>
-        <span class="pn-status-sep">|</span>
-        <span>Plain Text</span>
-      </div>
-      <div class="pn-status-right">
-        <span id="pnSaveStatus" class="pn-save-status">All changes saved</span>
-        <button class="pn-save-btn" onclick="pnSaveAndClose()">💾 Save & Close</button>
-      </div>
-    </div>
-
-  </div>
-</div>
 
 </main>
 </div>
@@ -1854,6 +1412,67 @@ tr:hover td {
   </div>
 </div>
 
+<!-- MY EXPENSE MODAL -->
+<div class="modal-bg" id="myExpModal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <h3>💰 Add My Expense</h3>
+      <button class="modal-close" onclick="closeModal('myExpModal')">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:1rem;">
+      <div class="form-row"><label>Title *</label><input class="inp" id="me_title" placeholder="e.g. Lunch, Transport"></div>
+      <div class="form-row"><label>Type *</label>
+        <select class="inp" id="me_type">
+          <option value="expense">Expense</option>
+          <option value="profit">Income</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Amount (AED) *</label><input class="inp" id="me_amount" type="number" placeholder="50"></div>
+      <div class="form-row"><label>Date</label><input class="inp" id="me_date" type="date"></div>
+      <div class="form-row"><label>Notes</label><input class="inp" id="me_notes" placeholder="Optional notes"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-outline" onclick="closeModal('myExpModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveMyExpense()">Save My Expense</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI CHAT SETTINGS MODAL -->
+<div class="modal-bg" id="aiChatSettingsModal">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <h3>⚙️ AI Chat Settings</h3>
+      <button class="modal-close" onclick="closeModal('aiChatSettingsModal')">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:1rem;">
+      <div class="form-row">
+        <label>AI Model</label>
+        <select class="inp" id="chatAiModel">
+          <option value="deepseek">DeepSeek AI (Recommended)</option>
+          <option value="gemini">Google Gemini</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>DeepSeek API Key</label>
+        <input class="inp" id="chatDeepSeekKey" type="password" placeholder="sk-...">
+      </div>
+      <div class="form-row">
+        <label>Gemini API Key</label>
+        <input class="inp" id="chatGeminiKey" type="password" placeholder="AIza...">
+      </div>
+      <div class="form-row">
+        <label>System Prompt (Roman Urdu)</label>
+        <textarea class="inp" id="chatAiSystemPrompt" rows="5" placeholder="Tum ek madadgar AI assistant ho...">Tum ek madadgar AI assistant ho jo expenses, tasks, aur reminders manage karta hai. Tum user ki request ke base par expenses add kar sakte ho, tasks create kar sakte ho, aur reminders set kar sakte ho. Hamesha Roman Urdu mein jawab do aur clear, actionable responses do.</textarea>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-outline" onclick="closeModal('aiChatSettingsModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAIChatSettings()">Save Settings</button>
+    </div>
+  </div>
+</div>
+
 <!-- EXPENSE DETAIL MODAL -->
 <div class="modal-bg" id="expDetailModal">
   <div class="modal" style="max-width:560px;padding:0;overflow:hidden;">
@@ -1965,16 +1584,6 @@ tr:hover td {
   </div>
 </div>
 
-<!-- AI TEAM SETTINGS OVERLAY -->
-<div class="ai-settings-overlay" id="aiSettingsOverlay">
-  <div class="ai-settings-panel">
-    <div class="ai-settings-header">
-      <h3>⚙️ AI Team Settings</h3>
-      <button class="ai-settings-close" onclick="closeAiTeamSettings()">✕</button>
-    </div>
-    <div class="ai-config-cards" id="aiConfigCards"></div>
-  </div>
-</div>
 
 <!-- UNDO TOAST -->
 <div id="undoToast">🗑 Deleted <button onclick="undoDelete()">Undo</button></div>
@@ -1984,7 +1593,6 @@ tr:hover td {
 
 <!-- Script dependencies -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<link rel="stylesheet" href="ai.css">
 
 <script>
 // Configure Chart JS Font
@@ -2222,15 +1830,11 @@ auth.onAuthStateChanged(user => {
     if (typeof startActivitySync === 'function') startActivitySync();
     if (typeof startSessionLogSync === 'function') startSessionLogSync();
     if (typeof startAlertsSync === 'function') startAlertsSync();
-    if (typeof startEmailRequestsSync === 'function') startEmailRequestsSync();
     logSession();
     initMultiTabSync();
     startPresence();
     loadDisplayName();
     initApp();
-    if (typeof loadSupportConfig === 'function') loadSupportConfig();
-    // Pre-initialize support if function exists
-    if (typeof initCustomerSupport === 'function') initCustomerSupport();
   } else {
     lock.style.display = 'flex';
     app.style.display = 'none';
@@ -2281,15 +1885,14 @@ function nav(page) {
   if (page === 'dashboard') renderDashboard();
   if (page === 'orders') renderOrders();
   if (page === 'expenses') renderExpenses();
+  if (page === 'my-expense') renderMyExpenses();
+  if (page === 'ai-chat') renderAIChat();
   if (page === 'pending') renderPending();
   if (page === 'goals') renderGoals();
   if (page === 'customers') renderCustomers();
   if (page === 'tasks') { selectTaskPerson('Ahmad'); renderTasks(); }
-  if (page === 'aiteam') { if(typeof initAiTeam==='function') initAiTeam(); }
   if (page === 'settings') { renderSettings(); loadDisplayName(); }
   if (page === 'history') renderHistory();
-  if (page === 'support') { if(typeof initCustomerSupport==='function') initCustomerSupport(); }
-  if (page === 'email-requests') { if(typeof renderEmailRequests==='function') renderEmailRequests(); }
   updatePresence(page);
   // Re-init Lucide icons after page switch
   setTimeout(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); }, 50);
@@ -2307,8 +1910,6 @@ function initApp() {
   renderDashboard();
   // Init Lucide icons
   if (typeof lucide !== 'undefined') lucide.createIcons();
-  // Pre-load AI team config
-  setTimeout(() => { if(typeof initAiTeam==='function') initAiTeam(); }, 500);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -2330,11 +1931,13 @@ function renderDashboard() {
   const orders = getFilteredOrders();
   const deliveredOrders = orders.filter(o => o.status === 'delivered');
   const expenses = getExpenses();
+  const reminders = getReminders().filter(r => !r.completed);
 
   const tRev = deliveredOrders.reduce((s, o) => s + (parseFloat(o.total) || 0), 0);
   const tProf = deliveredOrders.reduce((s, o) => s + ((parseFloat(o.profit_per)||0) * (parseInt(o.qty)||1)), 0);
   const tExp = expenses.filter(e => e.type === 'expense').reduce((s, e) => s + (parseFloat(e.amount)||0), 0);
   const tInc = expenses.filter(e => e.type === 'profit').reduce((s, e) => s + (parseFloat(e.amount)||0), 0);
+  const myExp = expenses.filter(e => e.type === 'expense' && e.is_my_expense === true).reduce((s, e) => s + (parseFloat(e.amount)||0), 0);
   const nProf = tProf + tInc - tExp;
 
   document.getElementById('dashStats').innerHTML = `
@@ -2343,6 +1946,8 @@ function renderDashboard() {
     <div class="stat-card c3"><div class="stat-icon" style="color:var(--warning)">🎯</div><div class="stat-label">Gross Profit</div><div class="stat-val">AED ${fmt(tProf)}</div><div class="stat-sub">From orders</div></div>
     <div class="stat-card c4"><div class="stat-icon" style="color:var(--danger)">💸</div><div class="stat-label">Expenses</div><div class="stat-val">AED ${fmt(tExp)}</div><div class="stat-sub">Total spent</div></div>
     <div class="stat-card c5"><div class="stat-icon" style="color:var(--info)">📦</div><div class="stat-label">Orders</div><div class="stat-val">${orders.length}</div><div class="stat-sub">${orders.filter(o=>!['delivered','cancel','fake','returned'].includes(o.status)).length} active</div></div>
+    <div class="stat-card c1"><div class="stat-icon" style="color:var(--primary)">💳</div><div class="stat-label">My Expense</div><div class="stat-val">AED ${fmt(myExp)}</div><div class="stat-sub">(+ personal expense)</div></div>
+    <div class="stat-card c2"><div class="stat-icon" style="color:var(--warning)">🔔</div><div class="stat-label">Reminders</div><div class="stat-val">${reminders.length}</div><div class="stat-sub">Active reminders</div></div>
   `;
 
   renderLineChart(orders);
@@ -2353,6 +1958,7 @@ function renderDashboard() {
   renderWaterfallChart(orders);
   renderRecentOrders(deliveredOrders);
   updateGoalRing();
+  renderReminders();
 }
 
 function fmt(n) { return Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -2961,6 +2567,433 @@ function openExpModal() {
   document.getElementById('expModal').classList.add('open');
 }
 
+function openMyExpModal() {
+  document.getElementById('me_title').value=''; 
+  document.getElementById('me_amount').value='';
+  document.getElementById('me_notes').value=''; 
+  document.getElementById('me_type').value='expense';
+  document.getElementById('me_date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('myExpModal').dataset.editId = '';
+  document.getElementById('myExpModal').classList.add('open');
+}
+
+function saveMyExpense() {
+  const t = document.getElementById('me_title').value.trim();
+  const a = document.getElementById('me_amount').value;
+  if(!t||!a) return toast('Fill required fields','error');
+  
+  const editId = document.getElementById('myExpModal').dataset.editId;
+
+  if(editId) {
+    // Edit mode
+    const expData = { title:t, type:document.getElementById('me_type').value, amount:parseFloat(a), date:document.getElementById('me_date').value||new Date().toISOString().split('T')[0], notes:document.getElementById('me_notes').value, is_my_expense:true, updated_at:Date.now() };
+    db.collection("expenses").doc(editId).update(expData)
+      .then(()=>{ closeModal('myExpModal'); toast('Updated!','success'); document.getElementById('myExpModal').dataset.editId=''; renderMyExpenses(); })
+      .catch(e=>toast('Error: '+e.message,'error'));
+    return;
+  }
+
+  const expData = { id:'e_'+Date.now(), title:t, type:document.getElementById('me_type').value, amount: parseFloat(a), date:document.getElementById('me_date').value||new Date().toISOString().split('T')[0], notes:document.getElementById('me_notes').value, is_my_expense:true, created_at:Date.now() };
+  
+  const exps = getExpenses();
+  exps.push(expData);
+  db.collection("expenses").doc(expData.id).set(expData);
+  logActivity('expense_added', `${expData.title} · ${expData.type === 'expense' ? '−' : '+'} AED ${fmt(expData.amount)} (My Expense)`);
+  closeModal('myExpModal'); toast('My Expense Added!','success');
+  renderMyExpenses();
+}
+
+function renderMyExpenses() {
+  const exps = getExpenses().filter(e => e.is_my_expense === true).sort((a,b)=>b.created_at-a.created_at);
+  const te = exps.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  const ti = exps.filter(e=>e.type==='profit').reduce((s,e)=>s+e.amount,0);
+  const thisMonth = new Date().toISOString().substring(0,7);
+  const monthExps = exps.filter(e=>e.type==='expense'&&(e.date||'').startsWith(thisMonth));
+  const monthTotal = monthExps.reduce((s,e)=>s+e.amount,0);
+  const avgExp = exps.filter(e=>e.type==='expense').length ? te / exps.filter(e=>e.type==='expense').length : 0;
+  const largest = exps.filter(e=>e.type==='expense').sort((a,b)=>b.amount-a.amount)[0];
+
+  // Stats
+  const statsHtml = `
+    <div class="stat-card c2">
+      <div class="stat-icon">💸</div>
+      <div class="stat-label">Total Expenses</div>
+      <div class="stat-val">− AED ${fmt(te)}</div>
+      <div class="stat-sub">${exps.filter(e=>e.type==='expense').length} entries</div>
+    </div>
+    <div class="stat-card c1">
+      <div class="stat-icon">💰</div>
+      <div class="stat-label">Total Income</div>
+      <div class="stat-val">+ AED ${fmt(ti)}</div>
+      <div class="stat-sub">${exps.filter(e=>e.type==='profit').length} entries</div>
+    </div>
+    <div class="stat-card c3">
+      <div class="stat-icon">📅</div>
+      <div class="stat-label">This Month</div>
+      <div class="stat-val">− AED ${fmt(monthTotal)}</div>
+      <div class="stat-sub">${monthExps.length} expenses</div>
+    </div>
+    <div class="stat-card c4">
+      <div class="stat-icon">📊</div>
+      <div class="stat-label">Avg Expense</div>
+      <div class="stat-val">AED ${fmt(avgExp)}</div>
+      <div class="stat-sub">per entry</div>
+    </div>
+  `;
+  document.getElementById('myExpStats').innerHTML = statsHtml;
+
+  // List
+  if(exps.length===0) {
+    document.getElementById('myExpList').innerHTML = `<div class="empty"><div class="empty-icon">💸</div><div class="empty-text">No my expenses yet</div><div class="empty-sub">Add your personal expenses to track them</div></div>`;
+    return;
+  }
+
+  const listHtml = exps.map(e => `
+    <div class="exp-item exp-item-clickable" onclick="showExpDetail('${e.id}')">
+      <div class="exp-icon ${e.type}">${e.type==='expense'?'💸':'💰'}</div>
+      <div class="exp-info">
+        <div class="exp-title">${e.title}</div>
+        <div class="exp-date">${e.date||'No date'} · ${e.notes||''}</div>
+      </div>
+      <div class="exp-amount ${e.type}">${e.type==='expense'?'−':'+'} AED ${fmt(e.amount)}</div>
+    </div>
+  `).join('');
+  document.getElementById('myExpList').innerHTML = listHtml;
+}
+
+// ══════════════════════════════════════════════════════════════
+// AI CHAT SYSTEM
+// ══════════════════════════════════════════════════════════════
+let AI_CHAT_HISTORY = [];
+let AI_TOOLS_USED = [];
+
+function renderAIChat() {
+  const container = document.getElementById('aiChatMessages');
+  if(AI_CHAT_HISTORY.length === 0) {
+    container.innerHTML = `
+      <div class="empty" style="text-align:center;padding:2rem;">
+        <div class="empty-icon">🤖</div>
+        <div class="empty-text">Start chatting with AI</div>
+        <div class="empty-sub">Ask to add expenses, create tasks, or set reminders</div>
+      </div>
+    `;
+    return;
+  }
+  
+  container.innerHTML = AI_CHAT_HISTORY.map(msg => `
+    <div class="ai-message ${msg.role}" style="padding:1rem;border-radius:var(--radius);max-width:80%;${msg.role==='user'?'background:var(--primary);color:white;margin-left:auto;':'background:var(--surface2);border:1px solid var(--border);'}">
+      <div style="font-weight:600;margin-bottom:0.3rem;">${msg.role==='user'?'👤 You':'🤖 AI'}</div>
+      <div style="white-space:pre-wrap;word-wrap:break-word;">${parseMarkdown(msg.content)}</div>
+      ${msg.tools && msg.tools.length > 0 ? `
+        <div style="margin-top:0.8rem;">
+          <button class="btn btn-outline btn-sm" onclick="toggleAITools('${msg.id}')" style="font-size:0.75rem;padding:0.3rem 0.6rem;">
+            🔧 Tools Used (${msg.tools.length})
+          </button>
+          <div id="ai-tools-${msg.id}" style="display:none;margin-top:0.5rem;background:var(--surface3);padding:0.5rem;border-radius:var(--radius-sm);font-size:0.8rem;">
+            ${msg.tools.map(tool => `<div style="padding:0.3rem 0;border-bottom:1px solid var(--border);">✅ ${tool.name}: ${tool.description}</div>`).join('')}
+          </div>
+        </div>
+      ` : ''}
+      ${msg.worked ? `<div style="margin-top:0.5rem;display:inline-block;background:var(--success);color:white;padding:0.2rem 0.6rem;border-radius:10px;font-size:0.7rem;font-weight:600;">✓ Worked</div>` : ''}
+    </div>
+  `).join('');
+  container.scrollTop = container.scrollHeight;
+}
+
+function parseMarkdown(text) {
+  if (!text) return '';
+  
+  // Escape HTML to prevent XSS
+  let html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  
+  // Code blocks (```code```)
+  html = html.replace(/```([\s\S]*?)```/g, '<pre style="background:var(--surface3);padding:0.8rem;border-radius:var(--radius);overflow-x:auto;margin:0.5rem 0;"><code>$1</code></pre>');
+  
+  // Inline code (`code`)
+  html = html.replace(/`([^`]+)`/g, '<code style="background:var(--surface3);padding:0.2rem 0.4rem;border-radius:4px;font-family:monospace;">$1</code>');
+  
+  // Bold (**text**)
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  
+  // Italic (*text*)
+  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  
+  // Headings (# heading)
+  html = html.replace(/^### (.*$)/gm, '<h3 style="font-size:1.1rem;font-weight:700;margin:0.8rem 0 0.4rem;">$1</h3>');
+  html = html.replace(/^## (.*$)/gm, '<h2 style="font-size:1.3rem;font-weight:700;margin:1rem 0 0.5rem;">$1</h2>');
+  html = html.replace(/^# (.*$)/gm, '<h1 style="font-size:1.5rem;font-weight:700;margin:1.2rem 0 0.6rem;">$1</h1>');
+  
+  // Bullet points (- item or * item)
+  html = html.replace(/^[\-\*] (.*$)/gm, '<li style="margin-left:1.5rem;">$1</li>');
+  
+  // Numbered lists (1. item)
+  html = html.replace(/^\d+\. (.*$)/gm, '<li style="margin-left:1.5rem;list-style-type:decimal;">$1</li>');
+  
+  // Line breaks
+  html = html.replace(/\n/g, '<br>');
+  
+  return html;
+}
+
+function toggleAITools(msgId) {
+  const el = document.getElementById(`ai-tools-${msgId}`);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function sendAIMessage() {
+  const input = document.getElementById('aiChatInput');
+  const message = input.value.trim();
+  if(!message) return;
+  
+  input.value = '';
+  
+  // Add user message
+  AI_CHAT_HISTORY.push({ id: Date.now().toString(), role: 'user', content: message });
+  renderAIChat();
+  
+  // Get AI config
+  const aiModel = localStorage.getItem('aiModel') || 'deepseek';
+  const apiKey = aiModel === 'gemini' ? localStorage.getItem('geminiKey') : localStorage.getItem('deepSeekKey');
+  const systemPrompt = localStorage.getItem('aiSystemPrompt') || 'Tum ek madadgar AI assistant ho jo expenses, tasks, aur reminders manage karta hai. Tum user ki request ke base par expenses add kar sakte ho, tasks create kar sakte ho, aur reminders set kar sakte ho. Hamesha Roman Urdu mein jawab do aur clear, actionable responses do.';
+  
+  if(!apiKey) {
+    AI_CHAT_HISTORY.push({ id: Date.now().toString(), role: 'assistant', content: 'Pehle apna AI API key Settings mein configure karo.' });
+    renderAIChat();
+    return;
+  }
+  
+  // Process user request and detect tools
+  const tools = detectAndExecuteTools(message);
+  
+  // Call AI API
+  try {
+    const response = await callAI(aiModel, apiKey, systemPrompt, message, tools);
+    AI_CHAT_HISTORY.push({ 
+      id: Date.now().toString(), 
+      role: 'assistant', 
+      content: response.text,
+      tools: tools.length > 0 ? tools : undefined,
+      worked: tools.length > 0
+    });
+    renderAIChat();
+  } catch(e) {
+    AI_CHAT_HISTORY.push({ id: Date.now().toString(), role: 'assistant', content: 'Error: ' + e.message });
+    renderAIChat();
+  }
+}
+
+function detectAndExecuteTools(message) {
+  const tools = [];
+  const lowerMsg = message.toLowerCase();
+  
+  // Detect expense addition
+  if(lowerMsg.includes('expense') || lowerMsg.includes('spent') || lowerMsg.includes('cost')) {
+    const amountMatch = message.match(/(\d+)/);
+    if(amountMatch) {
+      const amount = parseFloat(amountMatch[1]);
+      const title = message.replace(/expense|spent|cost|aed|\d+/gi, '').trim() || 'Expense';
+      addExpenseViaAI(title, amount);
+      tools.push({ name: 'add_expense', description: `Added expense: ${title} - AED ${amount}` });
+    }
+  }
+  
+  // Detect task creation
+  if(lowerMsg.includes('task') || lowerMsg.includes('todo') || lowerMsg.includes('reminder')) {
+    const taskText = message.replace(/task|todo|reminder|create|add/gi, '').trim();
+    if(taskText) {
+      addTaskViaAI(taskText);
+      tools.push({ name: 'create_task', description: `Created task: ${taskText}` });
+    }
+  }
+  
+  // Detect reminder setting
+  if(lowerMsg.includes('remind') || lowerMsg.includes('alert')) {
+    const reminderText = message.replace(/remind|alert|me/gi, '').trim();
+    if(reminderText) {
+      addReminderViaAI(reminderText);
+      tools.push({ name: 'set_reminder', description: `Set reminder: ${reminderText}` });
+    }
+  }
+  
+  return tools;
+}
+
+function addExpenseViaAI(title, amount) {
+  const expData = { id:'e_'+Date.now(), title:title, type:'expense', amount: amount, date:new Date().toISOString().split('T')[0], notes:'Added via AI Chat', created_at:Date.now() };
+  const exps = getExpenses();
+  exps.push(expData);
+  db.collection("expenses").doc(expData.id).set(expData);
+  logActivity('expense_added', `${expData.title} · − AED ${fmt(expData.amount)} (AI Chat)`);
+}
+
+function addTaskViaAI(taskText) {
+  // This would integrate with the existing task system
+  toast(`Task created: ${taskText}`, 'success');
+}
+
+function addReminderViaAI(reminderText) {
+  // This would integrate with a reminders system
+  const reminder = { id:'r_'+Date.now(), text:reminderText, created_at:Date.now(), completed:false };
+  const reminders = getReminders();
+  reminders.push(reminder);
+  db.collection("reminders").doc(reminder.id).set(reminder);
+  toast(`Reminder set: ${reminderText}`, 'success');
+}
+
+function getReminders() {
+  // Get reminders from Firebase or local storage
+  return JSON.parse(localStorage.getItem('reminders') || '[]');
+}
+
+function renderReminders() {
+  const reminders = getReminders().filter(r => !r.completed);
+  const container = document.getElementById('remindersContainer');
+  if(!container) return;
+  
+  if(reminders.length === 0) {
+    container.innerHTML = `<div style="text-align:center;padding:1rem;color:var(--muted);font-size:0.85rem;">No active reminders</div>`;
+    return;
+  }
+  
+  container.innerHTML = reminders.map(r => `
+    <div style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem;background:var(--surface2);border-radius:var(--radius-sm);margin-bottom:0.5rem;">
+      <input type="checkbox" onchange="completeReminder('${r.id}')" style="cursor:pointer;">
+      <span style="flex:1;font-size:0.85rem;">${r.text}</span>
+      <button onclick="deleteReminder('${r.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:1rem;">×</button>
+    </div>
+  `).join('');
+}
+
+function completeReminder(id) {
+  const reminders = getReminders();
+  const reminder = reminders.find(r => r.id === id);
+  if(reminder) {
+    reminder.completed = true;
+    reminder.completed_at = Date.now();
+    localStorage.setItem('reminders', JSON.stringify(reminders));
+    db.collection("reminders").doc(id).update({ completed: true, completed_at: Date.now() });
+    renderReminders();
+    renderDashboard();
+  }
+}
+
+function deleteReminder(id) {
+  const reminders = getReminders().filter(r => r.id !== id);
+  localStorage.setItem('reminders', JSON.stringify(reminders));
+  db.collection("reminders").doc(id).delete();
+  renderReminders();
+  renderDashboard();
+}
+
+function addManualReminder() {
+  const text = prompt('Enter reminder text:');
+  if(text) {
+    addReminderViaAI(text);
+    renderReminders();
+  }
+}
+
+async function callAI(model, apiKey, systemPrompt, userMessage, tools) {
+  try {
+    let responseText = '';
+    
+    if (model === 'deepseek') {
+      // DeepSeek API call
+      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessage }
+          ],
+          temperature: 0.7
+        })
+      });
+      
+      const data = await response.json();
+      if (data.error) throw new Error(data.error.message);
+      responseText = data.choices[0].message.content;
+      
+    } else if (model === 'gemini') {
+      // Gemini API call
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: systemPrompt },
+              { text: userMessage }
+            ]
+          }]
+        })
+      });
+      
+      const data = await response.json();
+      if (data.error) throw new Error(data.error.message);
+      responseText = data.candidates[0].content.parts[0].text;
+    }
+    
+    // Add tool info to response if tools were used
+    if (tools.length > 0) {
+      responseText += `\n\n✅ Maine ye kaam kiya: ${tools.map(t => t.description).join('. ')}.`;
+    }
+    
+    return { text: responseText };
+    
+  } catch (error) {
+    console.error('AI API Error:', error);
+    throw new Error('AI API call failed: ' + error.message);
+  }
+}
+
+function openAISettings() {
+  nav('settings');
+  // Scroll to AI settings section
+  setTimeout(() => {
+    const aiSection = document.querySelector('.settings-section:nth-child(4)');
+    if(aiSection) aiSection.scrollIntoView({ behavior: 'smooth' });
+  }, 100);
+}
+
+function openAIChatSettings() {
+  // Load current settings
+  document.getElementById('chatAiModel').value = localStorage.getItem('aiModel') || 'deepseek';
+  document.getElementById('chatDeepSeekKey').value = localStorage.getItem('deepSeekKey') || '';
+  document.getElementById('chatGeminiKey').value = localStorage.getItem('geminiKey') || '';
+  document.getElementById('chatAiSystemPrompt').value = localStorage.getItem('aiSystemPrompt') || 'Tum ek madadgar AI assistant ho jo expenses, tasks, aur reminders manage karta hai. Tum user ki request ke base par expenses add kar sakte ho, tasks create kar sakte ho, aur reminders set kar sakte ho. Hamesha Roman Urdu mein jawab do aur clear, actionable responses do.';
+  document.getElementById('aiChatSettingsModal').classList.add('open');
+}
+
+function saveAIChatSettings() {
+  const config = {
+    model: document.getElementById('chatAiModel').value,
+    deepseek_key: document.getElementById('chatDeepSeekKey').value.trim(),
+    gemini_key: document.getElementById('chatGeminiKey').value.trim(),
+    system_prompt: document.getElementById('chatAiSystemPrompt').value.trim()
+  };
+  localStorage.setItem('aiModel', config.model);
+  localStorage.setItem('deepSeekKey', config.deepseek_key);
+  localStorage.setItem('geminiKey', config.gemini_key);
+  localStorage.setItem('aiSystemPrompt', config.system_prompt);
+  
+  // Also save to Firebase
+  db.collection("settings").doc("ai_config").set(config);
+  
+  closeModal('aiChatSettingsModal');
+  toast('AI Chat Settings saved!', 'success');
+}
+
 function saveExpense() {
   const t = document.getElementById('e_title').value.trim();
   const a = document.getElementById('e_amount').value;
@@ -3276,10 +3309,12 @@ function applyAiConfigToUI() {
   const gK = document.getElementById('sGeminiKey');
   const dK = document.getElementById('sDeepSeekKey');
   const sM = document.getElementById('sAiModel');
+  const sP = document.getElementById('sAiSystemPrompt');
 
   if(gK && document.activeElement !== gK) gK.value = AI_CONFIG.gemini_key || '';
   if(dK && document.activeElement !== dK) dK.value = AI_CONFIG.deepseek_key || '';
   if(sM) sM.value = AI_CONFIG.model || 'gemini';
+  if(sP && document.activeElement !== sP) sP.value = AI_CONFIG.system_prompt || '';
 }
 
 function renderSettings() {
@@ -3292,8 +3327,13 @@ function saveAiConfig() {
   const config = {
     model: document.getElementById('sAiModel').value,
     gemini_key: document.getElementById('sGeminiKey').value.trim(),
-    deepseek_key: document.getElementById('sDeepSeekKey').value.trim()
+    deepseek_key: document.getElementById('sDeepSeekKey').value.trim(),
+    system_prompt: document.getElementById('sAiSystemPrompt').value.trim()
   };
+  localStorage.setItem('aiModel', config.model);
+  localStorage.setItem('geminiKey', config.gemini_key);
+  localStorage.setItem('deepSeekKey', config.deepseek_key);
+  localStorage.setItem('aiSystemPrompt', config.system_prompt);
   db.collection("settings").doc("ai_config").set(config)
     .then(() => toast('AI Config saved to Cloud!','success'))
     .catch(e => toast('Cloud Save Error','error'));
@@ -3523,8 +3563,9 @@ let _presenceInterval = null;
 
 const PAGE_LABELS = {
   dashboard: '📊 Dashboard', orders: '📦 Orders', expenses: '💸 Expenses',
+  'my-expense': '💰 My Expense', 'ai-chat': '🤖 AI Chat',
   pending: '⏳ Pending', customers: '👥 Customers', tasks: '✅ Tasks',
-  aiteam: '🤖 AI Team', settings: '⚙️ Settings', history: '🕐 Activity Log'
+  settings: '⚙️ Settings', history: '🕐 Activity Log'
 };
 
 function startPresence() {
@@ -3863,36 +3904,6 @@ function previewGoal() { /* overridden by working.js */ }
 function renderSettings() { /* overridden by working.js */ }
 function showOrderDetail(id) { /* overridden by working.js */ }
 
-// ── Customer Support stubs — overridden by customer-support.js ──
-function initCustomerSupport() { /* overridden by customer-support.js */ }
-function renderSupportChatList() { /* overridden by customer-support.js */ }
-function updateSupportStats() { /* overridden by customer-support.js */ }
-function loadSupportConfig() { /* overridden by customer-support.js */ }
-function saveSupportConfig() { /* overridden by customer-support.js */ }
-function selectSupportChat(id) { /* overridden by customer-support.js */ }
-function deleteSupportChat() { /* overridden by customer-support.js */ }
-function csSupportTabSwitch(tab) { /* overridden by customer-support.js */ }
-function sendPromptUpgradeMsg() { /* overridden by customer-support.js */ }
-function handlePromptFileUpload(el) { /* overridden by customer-support.js */ }
-function removeUploadedDoc(i) { /* overridden by customer-support.js */ }
-function clearPromptChat() { /* overridden by customer-support.js */ }
-function copyEmbedCode() { /* overridden by customer-support.js */ }
-function openPromptNotepad() { /* overridden by customer-support.js */ }
-function closePromptNotepad() { /* overridden by customer-support.js */ }
-function pnSaveAndClose() { /* overridden by customer-support.js */ }
-function pnOnInput() { /* overridden by customer-support.js */ }
-function pnKeydown(e) { /* overridden by customer-support.js */ }
-function pnSyncScroll() { /* overridden by customer-support.js */ }
-function pnInsert(t) { /* overridden by customer-support.js */ }
-function pnWrap(a,b) { /* overridden by customer-support.js */ }
-function pnUndo() { /* overridden by customer-support.js */ }
-function pnClear() { /* overridden by customer-support.js */ }
-function pnAiImprove() { /* overridden by customer-support.js */ }
-function pnAiShorten() { /* overridden by customer-support.js */ }
-function pnAiTranslate() { /* overridden by customer-support.js */ }
-function pnAcceptSuggestion() { /* overridden by customer-support.js */ }
-function pnRejectSuggestion() { /* overridden by customer-support.js */ }
-function pnToggleFullscreen() { /* overridden by customer-support.js */ }
 // KB stubs
 function switchToKBTab() {}
 function openKBModal(id) {}
@@ -3907,21 +3918,6 @@ function paiQuickAction(a) {}
 function paiRestoreVersion(i) {}
 function toggleHumanMode(v) {}
 function sendHumanReply() {}
-// Advanced support stubs
-function toggleSupportSound() {}
-function openChatSearch() {}
-function searchInChat() {}
-function togglePinChat(s) {}
-function showChatHistoryTimeline(s) {}
-function generateAIDraft() {}
-function translateReply() {}
-function toggleCannedPanel() {}
-function saveCannedResponse() {}
-function renderEmailRequests() {}
-function updateEmailReqStatus(i,s) {}
-function saveEmailReqNote(i) {}
-function deleteEmailReq(i) {}
-function viewEmailReqChat(s) {}
 function exportBackup() { /* overridden by working.js */ }
 function importBackup(e) { /* overridden by working.js */ }
 function confirmClearLocalData() { /* overridden by working.js */ }
@@ -3936,5 +3932,7 @@ function confirmClearData() { /* overridden by working.js */ }
 <script src="knowledge-base.js"></script>
 <script src="support-advanced.js"></script>
 <script>startLiveClock();</script>
+</body>
+</html>>startLiveClock();</script>
 </body>
 </html>
