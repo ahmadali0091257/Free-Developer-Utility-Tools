@@ -190,6 +190,7 @@ tr:last-child td { border-bottom:none; }
 .badge-returned { background:rgba(147, 51, 234, 0.15); color:#9333ea; } 
 .badge-cancel { background:var(--danger-light); color:var(--danger); }
 .badge-fake { background:var(--surface3); color:var(--muted); }
+.badge-no-response { background:rgba(139,92,246,0.15); color:#8b5cf6; }
 
 /* ── MODALS ── */
 .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,0.5); backdrop-filter:blur(3px); z-index:500; display:none; align-items:center; justify-content:center; padding:1rem; opacity: 0; transition: opacity 0.2s; }
@@ -978,6 +979,7 @@ tr:hover td {
         <option value="returned">Returned</option>
         <option value="cancel">Cancelled</option>
         <option value="fake">Fake</option>
+        <option value="no_response">No Response</option>
       </select>
       <input type="date" class="inp" id="orderDateFrom" onchange="renderOrders()" style="max-width:160px;" title="From Date">
       <input type="date" class="inp" id="orderDateTo" onchange="renderOrders()" style="max-width:160px;" title="To Date">
@@ -1351,6 +1353,7 @@ tr:hover td {
           <option value="returned">Returned</option>
           <option value="cancel">Cancelled</option>
           <option value="fake">Fake</option>
+          <option value="no_response">No Response</option>
         </select>
       </div>
       <div class="form-row"><label>Date</label><input class="inp" id="o_date" type="date"></div>
@@ -1584,6 +1587,38 @@ tr:hover td {
   </div>
 </div>
 
+
+<!-- ADD MORE MODAL -->
+<div class="modal-bg" id="addMoreModal">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <h3>📋 Add More — <span id="addMoreOrderRef"></span></h3>
+      <button class="modal-close" onclick="closeModal('addMoreModal')">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:1rem;">
+      <div class="form-row">
+        <label>Tracking ID</label>
+        <input class="inp" id="am_tracking" placeholder="e.g. TRACK-12345, 1Z999AA10123456784">
+        <div id="am_tracking_saved" style="display:none;font-size:0.8rem;color:var(--success);margin-top:0.2rem;">✅ Saved</div>
+      </div>
+      <div class="form-row">
+        <label>Correct Status</label>
+        <input class="inp" id="am_correct_status" placeholder="Type a custom status..." oninput="onCorrectStatusInput(this.value)">
+        <div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.5rem;" id="am_status_chips"></div>
+        <div id="am_cs_saved" style="display:none;font-size:0.8rem;color:var(--success);margin-top:0.2rem;">✅ Saved</div>
+      </div>
+      <div class="form-row">
+        <label>Notes (optional)</label>
+        <textarea class="inp" id="am_notes" rows="2" placeholder="Additional notes..."></textarea>
+        <div id="am_notes_saved" style="display:none;font-size:0.8rem;color:var(--success);margin-top:0.2rem;">✅ Saved</div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-outline" onclick="closeModal('addMoreModal')">Close</button>
+      <button class="btn btn-primary" onclick="saveAddMoreData()">💾 Save</button>
+    </div>
+  </div>
+</div>
 
 <!-- UNDO TOAST -->
 <div id="undoToast">🗑 Deleted <button onclick="undoDelete()">Undo</button></div>
@@ -2006,15 +2041,15 @@ function renderLineChart(orders) {
 function renderDoughnut(orders) {
   const isLight = document.body.getAttribute('data-theme') === 'light';
   const textColor = isLight ? '#64748b' : '#94a3b8';
-  const counts = { delivered:0, processing:0, shipped:0, unfulfilled:0, returned:0, cancel:0, fake:0 };
+  const counts = { delivered:0, processing:0, shipped:0, unfulfilled:0, returned:0, cancel:0, fake:0, no_response:0 };
   orders.forEach(o => { if(counts[o.status] !== undefined) counts[o.status]++; });
 
   if (doughnutChart) doughnutChart.destroy();
   doughnutChart = new Chart(document.getElementById('chartDoughnut').getContext('2d'), {
     type: 'doughnut',
     data: {
-      labels:['Delivered', 'Processing', 'Shipped', 'Unfulfilled', 'Returned', 'Cancelled', 'Fake'],
-      datasets:[{ data: Object.values(counts), backgroundColor:['#10b981','#f59e0b','#6366f1','#0ea5e9','#9333ea','#ef4444','#64748b'], borderWidth: 0 }]
+      labels:['Delivered', 'Processing', 'Shipped', 'Unfulfilled', 'Returned', 'Cancelled', 'Fake', 'No Response'],
+      datasets:[{ data: Object.values(counts), backgroundColor:['#10b981','#f59e0b','#6366f1','#0ea5e9','#9333ea','#ef4444','#64748b','#8b5cf6'], borderWidth: 0 }]
     },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '70%',
@@ -2319,7 +2354,7 @@ function buildOrderTimeline(order) {
     { key: 'shipped',     label: 'Shipped',       icon: '🚚' },
     { key: 'delivered',   label: 'Delivered',     icon: '✅' },
   ];
-  const TERMINAL = { returned: '↩️ Returned', cancel: '❌ Cancelled', fake: '🚫 Fake' };
+  const TERMINAL = { returned: '↩️ Returned', cancel: '❌ Cancelled', fake: '🚫 Fake', no_response: '📵 No Response' };
 
   const currentStatus = order.status;
   const isTerminal = !!TERMINAL[currentStatus];
@@ -3190,20 +3225,28 @@ function deleteExpense(id) {
 // PENDING & GOALS
 // ══════════════════════════════════════════════════════════════
 function renderPending() {
-  const ords = getOrders().filter(o=>!['delivered','cancel','fake','returned'].includes(o.status)).sort((a,b)=>b.created_at-a.created_at);
+  const ords = getOrders().filter(o=>!['delivered','cancel','fake','returned','no_response'].includes(o.status)).sort((a,b)=>b.created_at-a.created_at);
   const grid = document.getElementById('pendingGrid');
   if(!ords.length) return grid.innerHTML = '<div class="empty" style="grid-column:1/-1">No active orders — all clear!</div>';
   
-  grid.innerHTML = ords.map(o=>`
-    <div class="pending-card" onclick="showOrderDetail('${o.id}')">
-      <div class="pending-card-top">
+  grid.innerHTML = ords.map(o=>{
+    const hasTracking = o.tracking_id ? true : false;
+    const hasCs = o.correct_status ? true : false;
+    return `
+    <div class="pending-card">
+      <div class="pending-card-top" onclick="showOrderDetail('${o.id}')" style="cursor:pointer;">
         <div><div class="pending-name" style="color:var(--text)">${o.customer_name}</div><div class="pending-meta">${o.product} · x${o.qty}</div></div>
         <div>${badge(o.status)}</div>
       </div>
-      <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
+      <div style="display:flex; justify-content:space-between; font-size:0.85rem;" onclick="showOrderDetail('${o.id}')" style="cursor:pointer;">
         <span style="color:var(--text)">Total: <strong style="color:var(--success)">AED ${fmt(o.total)}</strong></span>
         <span style="color:var(--muted)">${o.date}</span>
       </div>
+      ${hasTracking || hasCs ? `
+      <div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin:0.5rem 0 0.3rem;padding:0.4rem;background:var(--surface2);border-radius:var(--radius-sm);font-size:0.78rem;">
+        ${hasTracking ? `<span style="color:var(--info)">📦 Tracking: <strong>${o.tracking_id}</strong></span>` : ''}
+        ${hasCs ? `<span style="color:var(--primary)">🏷️ Status: <strong>${o.correct_status}</strong></span>` : ''}
+      </div>` : ''}
       <div class="pending-actions" onclick="event.stopPropagation()">
         <select class="inp" id="ps_${o.id}" style="flex:1; padding:0.35rem 0.6rem; font-size:0.85rem">
           <option value="unfulfilled" ${o.status==='unfulfilled'?'selected':''}>Unfulfilled</option>
@@ -3212,11 +3255,95 @@ function renderPending() {
           <option value="delivered">Delivered</option>
           <option value="returned">Returned</option>
           <option value="cancel">Cancel</option>
+          <option value="no_response" ${o.status==='no_response'?'selected':''}>No Response</option>
         </select>
         <button class="btn btn-primary btn-sm" onclick="DataManager.updateOrderStatus('${o.id}', document.getElementById('ps_${o.id}').value)">Update</button>
+        <button class="btn btn-outline btn-sm" onclick="openAddMoreModal('${o.id}')" title="Add Tracking ID & Correct Status">➕ Add More</button>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
+}
+
+// ── ADD MORE (Tracking ID + Correct Status) ──────────────────
+let ADD_MORE_ORDER_ID = null;
+function escHtmlTag(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function openAddMoreModal(orderId) {
+  ADD_MORE_ORDER_ID = orderId;
+  const o = getOrders().find(x => x.id === orderId);
+  if (!o) return;
+  document.getElementById('addMoreOrderRef').textContent = `${o.customer_name} — ${o.product}`;
+  document.getElementById('am_tracking').value = o.tracking_id || '';
+  document.getElementById('am_correct_status').value = o.correct_status || '';
+  document.getElementById('am_notes').value = o.notes_extra || '';
+  document.getElementById('am_tracking_saved').style.display = 'none';
+  document.getElementById('am_cs_saved').style.display = 'none';
+  document.getElementById('am_notes_saved').style.display = 'none';
+  loadCorrectStatusChips();
+  document.getElementById('addMoreModal').classList.add('open');
+}
+
+function loadCorrectStatusChips() {
+  const container = document.getElementById('am_status_chips');
+  db.collection("settings").doc("order_extra_statuses").get().then(doc => {
+    const statuses = doc.exists ? (doc.data().statuses || []) : [];
+    if (!statuses.length) { container.innerHTML = ''; return; }
+    container.innerHTML = statuses.map(s => `
+      <span class="cust-tag tag-manual" onclick="selectCorrectStatus('${escHtmlTag(s)}')" style="cursor:pointer;">${escHtmlTag(s)}</span>
+    `).join('');
+  }).catch(() => { container.innerHTML = ''; });
+}
+
+function selectCorrectStatus(status) {
+  document.getElementById('am_correct_status').value = status;
+}
+
+function onCorrectStatusInput(val) {
+  if (val.trim()) document.getElementById('am_cs_saved').style.display = 'none';
+}
+
+function saveAddMoreData() {
+  const id = ADD_MORE_ORDER_ID;
+  if (!id) return;
+  const tracking = document.getElementById('am_tracking').value.trim();
+  const correctStatus = document.getElementById('am_correct_status').value.trim();
+  const notes = document.getElementById('am_notes').value.trim();
+  
+  const updateData = {};
+  updateData.tracking_id = tracking || '';
+  updateData.correct_status = correctStatus || '';
+  updateData.notes_extra = notes || '';
+  updateData.updated_at = Date.now();
+  
+  db.collection("orders").doc(id).update(updateData)
+    .then(() => {
+      const idx = GLOBAL_ORDERS.findIndex(o => o.id === id);
+      if (idx !== -1) {
+        GLOBAL_ORDERS[idx].tracking_id = tracking;
+        GLOBAL_ORDERS[idx].correct_status = correctStatus;
+        GLOBAL_ORDERS[idx].notes_extra = notes;
+      }
+      if (tracking) document.getElementById('am_tracking_saved').style.display = 'block';
+      if (correctStatus) document.getElementById('am_cs_saved').style.display = 'block';
+      if (notes) document.getElementById('am_notes_saved').style.display = 'block';
+      toast('Saved!', 'success');
+      
+      // Save correct status to shared pool
+      if (correctStatus) {
+        db.collection("settings").doc("order_extra_statuses").get().then(doc => {
+          const data = doc.exists ? doc.data() : {};
+          let statuses = data.statuses || [];
+          if (!statuses.includes(correctStatus)) {
+            statuses.push(correctStatus);
+            db.collection("settings").doc("order_extra_statuses").set({ statuses });
+          }
+          loadCorrectStatusChips();
+        }).catch(() => {});
+      }
+      
+      renderPending();
+    })
+    .catch(e => toast('Error: ' + e.message, 'error'));
 }
 
 function openGoalModal() {
@@ -3847,7 +3974,8 @@ function badge(s) {
     unfulfilled:['badge-unfulfilled','📦 Unfulfilled'], 
     returned:['badge-returned','↩️ Returned'], 
     cancel:['badge-cancel','❌ Cancelled'], 
-    fake:['badge-fake','🚫 Fake'] 
+    fake:['badge-fake','🚫 Fake'],
+    no_response:['badge-no-response','📵 No Response']
   };
   const[c, l] = map[s] ||['badge-processing', s]; 
   return `<span class="badge ${c}">${l}</span>`;

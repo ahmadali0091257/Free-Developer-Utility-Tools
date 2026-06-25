@@ -73,11 +73,14 @@ function showOrderDetail(id) {
       ${o.age||o.gender?`<div class="detail-row"><div class="detail-label">Age / Gender</div><div class="detail-val">${o.age||'—'} / ${o.gender||'—'}</div></div>`:''}
       <div class="detail-row" style="grid-column:1/-1"><div class="detail-label">Address</div><div class="detail-val">${o.address||'—'}</div></div>
       ${o.notes?`<div class="detail-row" style="grid-column:1/-1"><div class="detail-label">Notes</div><div class="detail-val">${o.notes}</div></div>`:''}
+      ${o.tracking_id?`<div class="detail-row"><div class="detail-label">Tracking ID</div><div class="detail-val" style="color:var(--info);font-weight:600;">${o.tracking_id}</div></div>`:''}
+      ${o.correct_status?`<div class="detail-row"><div class="detail-label">Correct Status</div><div class="detail-val" style="color:var(--primary);font-weight:600;">${o.correct_status}</div></div>`:''}
+      ${o.notes_extra?`<div class="detail-row" style="grid-column:1/-1"><div class="detail-label">Extra Notes</div><div class="detail-val">${o.notes_extra}</div></div>`:''}
     </div>
     ${typeof buildOrderTimeline === 'function' ? `<div style="margin:0.5rem 0 0.8rem;"><div style="font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;margin-bottom:0.4rem;">Status Timeline</div>${buildOrderTimeline(o)}</div>` : ''}
     <div style="display:flex;gap:0.8rem;align-items:center;margin-top:0.5rem;">
       <select class="inp" id="detail_status_${o.id}" style="flex:1;">
-        ${['unfulfilled','processing','shipped','delivered','returned','cancel','fake'].map(s=>
+        ${['unfulfilled','processing','shipped','delivered','returned','cancel','fake','no_response'].map(s=>
           `<option value="${s}" ${o.status===s?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`
         ).join('')}
       </select>
