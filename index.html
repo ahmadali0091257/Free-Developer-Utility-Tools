@@ -1352,7 +1352,7 @@ tr:hover td {
           <option value="delivered">Delivered</option>
           <option value="returned">Returned</option>
           <option value="cancel">Cancelled</option>
-          <option value="fake">Fake</option>
+          <option value="fake">undelivered</option>
           <option value="no_response">No Response</option>
         </select>
       </div>
@@ -1985,6 +1985,8 @@ function renderDashboard() {
     <div class="stat-card c2"><div class="stat-icon" style="color:var(--warning)">🔔</div><div class="stat-label">Reminders</div><div class="stat-val">${reminders.length}</div><div class="stat-sub">Active reminders</div></div>
   `;
 
+
+
   renderLineChart(orders);
   renderDoughnut(orders);
   renderWoW(orders);
@@ -2354,7 +2356,7 @@ function buildOrderTimeline(order) {
     { key: 'shipped',     label: 'Shipped',       icon: '🚚' },
     { key: 'delivered',   label: 'Delivered',     icon: '✅' },
   ];
-  const TERMINAL = { returned: '↩️ Returned', cancel: '❌ Cancelled', fake: '🚫 Fake', no_response: '📵 No Response' };
+  const TERMINAL = { returned: '↩️ Returned', cancel: '❌ Cancelled', fake: '🚫 undelivered', no_response: '📵 No Response' };
 
   const currentStatus = order.status;
   const isTerminal = !!TERMINAL[currentStatus];
